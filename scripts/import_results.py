@@ -111,8 +111,11 @@ def process_pdf(pdf_path):
             event_id = find_event(cursor, event_date, loc)
             
         if not event_id:
-            print(f"  [WARN] Unknown Event for {header_line}. Skipping.")
-            return
+            print(f"  [INFO] Creating new event for {loc} on {date_str}")
+            event_id = f"evt_{uuid.uuid4().hex[:8]}"
+            cursor.execute("INSERT INTO events (id, championship_id, name, date, location, status) VALUES (?, ?, ?, ?, ?, ?)", 
+                           (event_id, champ_id, f"{loc} {match.group(1)}", event_date, loc, 'COMPLETED'))
+            # Continue with this new event_id
 
         print(f"  Event: {event_id} ({loc})")
 
@@ -262,10 +265,14 @@ def process_pdf(pdf_path):
 
 def main():
     # Only run if PDF dir exists
-    if os.path.exists('pdf'):
-        for f in os.listdir('pdf'):
+    pdf_dir = os.path.join('pdf', '2025')
+    if os.path.exists(pdf_dir):
+        print(f"Scanning {pdf_dir}...")
+        for f in os.listdir(pdf_dir):
             if f.endswith('.pdf'):
-                process_pdf(os.path.join('pdf', f))
+                process_pdf(os.path.join(pdf_dir, f))
+    else:
+        print(f"Directory {pdf_dir} not found.")
 
 if __name__ == '__main__':
     main()

@@ -66,6 +66,18 @@ def init_db():
         FOREIGN KEY (driver_id) REFERENCES drivers(id),
         FOREIGN KEY (class_id) REFERENCES classes(id)
     );
+
+    CREATE TABLE driver_participations (
+        driver_id TEXT,
+        class_id TEXT,
+        points INTEGER DEFAULT 0,
+        rank INTEGER,
+        wins INTEGER DEFAULT 0,
+        podiums INTEGER DEFAULT 0,
+        PRIMARY KEY (driver_id, class_id),
+        FOREIGN KEY (driver_id) REFERENCES drivers(id),
+        FOREIGN KEY (class_id) REFERENCES classes(id)
+    );
     """
     
     cursor.executescript(schema)

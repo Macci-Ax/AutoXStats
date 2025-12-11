@@ -177,23 +177,62 @@ export const Drivers: React.FC = () => {
             )}
           </div>
 
-          {/* Class Breakdown if multiple classes */}
-          {Object.keys(groupedResults).length > 1 && (
-            <div className="mb-8 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
-              <h3 className="text-sm font-bold text-slate-400 mb-3 uppercase">Punkte nach Klasse</h3>
-              <div className="space-y-2">
-                {Object.entries(groupedResults).map(([className, stats]: [string, any]) => (
-                  <div key={className} className="flex justify-between items-center bg-slate-900 p-2 rounded">
-                    <span className="text-slate-200 font-medium">{className}</span>
-                    <div className="flex gap-4">
-                      <span className="text-slate-400 text-sm flex items-center gap-1"><Trophy size={14} /> {stats.wins} Siege</span>
-                      <span className="text-white font-bold">{stats.points} Pkt</span>
-                    </div>
+          {/* UPDATED: Class Breakdown using official driver entries */}
+          {(() => {
+            // Find all driver entries that belong to this person (same originalId or similar name match if id is complex)
+            // We rely on originalId which we preserved in the API response
+            const allClassParticipations = drivers.filter(d =>
+              d.originalId === driver.originalId ||
+              (d.name === driver.name && d.team === driver.team) // Fallback safety
+            ).sort((a, b) => b.points - a.points);
+
+            if (allClassParticipations.length > 1) {
+              return (
+                <div className="mb-8 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                  <h3 className="text-sm font-bold text-slate-400 mb-3 uppercase">Punkte nach Klasse</h3>
+                  <div className="space-y-2">
+                    {allClassParticipations.map((p) => (
+                      <div key={p.id} className="flex justify-between items-center bg-slate-900 p-3 rounded border border-slate-800 hover:border-slate-600 transition group">
+
+                        <div className="flex items-center gap-3">
+                          {/* Rank Badge */}
+                          <div className={`
+                             w-8 h-8 flex items-center justify-center rounded-full font-bold text-lg
+                             ${p.seasonRank === 1 ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' :
+                              p.seasonRank === 2 ? 'bg-slate-400/20 text-slate-300 border border-slate-400/50' :
+                                p.seasonRank === 3 ? 'bg-amber-700/20 text-amber-600 border border-amber-700/50' :
+                                  'bg-slate-800 text-slate-500 border border-slate-700'}
+                           `}>
+                            {p.seasonRank || '-'}
+                          </div>
+
+                          <div>
+                            <span className="text-slate-200 font-bold block">{p.driverClass}</span>
+                            <span className="text-xs text-slate-500 uppercase">
+                              {p.seasonRank === 1 ? 'Meister' : 'Platzierung'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-6">
+                          <div className="text-right hidden sm:block">
+                            <span className="block text-slate-200 font-bold">{p.wins}</span>
+                            <span className="text-xs text-slate-500 uppercase">Siege</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="block text-white font-black text-xl">{p.points}</span>
+                            <span className="text-xs text-slate-500 uppercase">Punkte</span>
+                          </div>
+                        </div>
+
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
+                </div>
+              );
+            }
+            return null;
+          })()}
 
           {driver.seasonRank && (
             <div className="mb-8 p-4 bg-yellow-900/20 border border-yellow-700/50 rounded-lg flex items-center justify-between">

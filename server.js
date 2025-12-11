@@ -44,7 +44,10 @@ app.get('/api/drivers', (req, res) => {
             d.start_number as number, 
             c.name as driverClass,
             d.bio,
-            dp.rank as season_rank,
+            RANK() OVER (
+                PARTITION BY dp.class_id 
+                ORDER BY COALESCE(SUM(r.points), dp.points) DESC
+            ) as season_rank,
             d.heat_wins as static_heat,
             dp.points as static_points,
             c.championship_id as champ_id,
@@ -99,6 +102,72 @@ app.get('/api/drivers', (req, res) => {
         });
 
         res.json(drivers);
+    });
+});
+
+// GET /api/leaderboard/random-class
+// Returns top 3 drivers for a random class
+app.get('/api/leaderboard/random-class', (req, res) => {
+    // 1. Select a random class that has participations
+    const classQuery = `
+        SELECT c.id, c.name FROM classes c
+        JOIN driver_participations dp ON c.id = dp.class_id
+        GROUP BY c.id
+        ORDER BY RANDOM()
+        LIMIT 1
+    `;
+
+    db.get(classQuery, [], (err, classRow) => {
+        if (err) {
+            console.error("Database Error (Random Class):", err.message);
+            res.status(500).json({ error: err.message });
+            return;
+        }
+
+        if (!classRow) {
+            res.status(404).json({ error: "No active classes found" });
+            return;
+        }
+
+        const classId = classRow.id;
+        const className = classRow.name;
+
+        // 2. Get Top 3 drivers for this class
+        const driversQuery = `
+            SELECT 
+                d.id, d.name, d.team, d.car, 
+                dp.points as static_points,
+                SUM(r.points) as calc_points,
+                COUNT(r.id) as races
+            FROM drivers d
+            JOIN driver_participations dp ON d.id = dp.driver_id
+            LEFT JOIN race_results r ON d.id = r.driver_id AND dp.class_id = r.class_id
+            WHERE dp.class_id = ?
+            GROUP BY d.id
+            ORDER BY COALESCE(SUM(r.points), dp.points) DESC
+            LIMIT 3
+        `;
+
+        db.all(driversQuery, [classId], (err, rows) => {
+            if (err) {
+                console.error("Database Error (Drivers):", err.message);
+                return res.status(500).json({ error: err.message });
+            }
+
+            const drivers = rows.map(row => ({
+                id: row.id,
+                name: row.name,
+                team: row.team || "",
+                points: row.races > 0 ? (row.calc_points || 0) : (row.static_points || 0),
+                avatarUrl: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=200'
+            }));
+
+            res.json({
+                classId,
+                className,
+                drivers
+            });
+        });
     });
 });
 
