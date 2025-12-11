@@ -38,7 +38,8 @@ export const Drivers: React.FC = () => {
 
   useEffect(() => {
     if (selectedDriver) {
-      fetch(`http://localhost:3000/api/drivers/${selectedDriver.id}/results`)
+      const driverId = selectedDriver.originalId || selectedDriver.id.split('::')[0];
+      fetch(`http://localhost:3000/api/drivers/${driverId}/results`)
         .then(res => res.json())
         .then(data => setRecentResults(data))
         .catch(err => console.error("Failed to fetch results:", err));
@@ -86,6 +87,17 @@ export const Drivers: React.FC = () => {
   const renderDetail = (driver: Driver) => {
     const isLangstrecke = driver.driverClass.includes('Langstrecke');
 
+    // Group results by class for the breakdown view
+    const groupedResults = recentResults.reduce((acc, result) => {
+      const cls = result.class_name || 'Unbekannt';
+      if (!acc[cls]) {
+        acc[cls] = { points: 0, wins: 0 };
+      }
+      acc[cls].points += result.points;
+      if (result.rank === 1) acc[cls].wins += 1;
+      return acc;
+    }, {} as Record<string, { points: number, wins: number }>);
+
     const chartData = [
       { name: '1. Platz', Anzahl: driver.wins, color: '#EAB308' },
       { name: '2. Platz', Anzahl: driver.secondPlaces, color: '#94A3B8' },
@@ -122,7 +134,7 @@ export const Drivers: React.FC = () => {
 
           <div className={`grid grid-cols-2 ${isLangstrecke ? 'md:grid-cols-4' : 'md:grid-cols-5'} gap-4 mb-8`}>
             <div className="bg-slate-900 p-3 rounded text-center flex flex-col items-center justify-center">
-              <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Punkte</div>
+              <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Gesamtpunkte</div>
               <div className="text-2xl font-bold text-white">{driver.points}</div>
             </div>
 
@@ -164,6 +176,24 @@ export const Drivers: React.FC = () => {
               </div>
             )}
           </div>
+
+          {/* Class Breakdown if multiple classes */}
+          {Object.keys(groupedResults).length > 1 && (
+            <div className="mb-8 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+              <h3 className="text-sm font-bold text-slate-400 mb-3 uppercase">Punkte nach Klasse</h3>
+              <div className="space-y-2">
+                {Object.entries(groupedResults).map(([className, stats]: [string, any]) => (
+                  <div key={className} className="flex justify-between items-center bg-slate-900 p-2 rounded">
+                    <span className="text-slate-200 font-medium">{className}</span>
+                    <div className="flex gap-4">
+                      <span className="text-slate-400 text-sm flex items-center gap-1"><Trophy size={14} /> {stats.wins} Siege</span>
+                      <span className="text-white font-bold">{stats.points} Pkt</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {driver.seasonRank && (
             <div className="mb-8 p-4 bg-yellow-900/20 border border-yellow-700/50 rounded-lg flex items-center justify-between">

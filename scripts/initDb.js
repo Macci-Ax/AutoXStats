@@ -77,6 +77,18 @@ const schema = `
       FOREIGN KEY (driver_id) REFERENCES drivers(id),
       FOREIGN KEY (class_id) REFERENCES classes(id)
   );
+
+  CREATE TABLE driver_participations (
+      driver_id TEXT,
+      class_id TEXT,
+      points INTEGER DEFAULT 0,
+      rank INTEGER,
+      wins INTEGER DEFAULT 0,
+      podiums INTEGER DEFAULT 0,
+      PRIMARY KEY (driver_id, class_id),
+      FOREIGN KEY (driver_id) REFERENCES drivers(id),
+      FOREIGN KEY (class_id) REFERENCES classes(id)
+  );
 `;
 
 db.exec(schema);
@@ -143,6 +155,7 @@ const eventsData = [
 const insertChamp = db.prepare('INSERT OR REPLACE INTO championships (id, name, year) VALUES (?, ?, ?)');
 const insertClass = db.prepare('INSERT OR REPLACE INTO classes (id, championship_id, name) VALUES (?, ?, ?)');
 const insertDriver = db.prepare('INSERT OR REPLACE INTO drivers (id, name, team, car, start_number, current_class_id, points, season_rank, wins, second_places, third_places, heat_wins, podiums) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+const insertParticipation = db.prepare('INSERT OR REPLACE INTO driver_participations (driver_id, class_id, points) VALUES (?, ?, ?)');
 const insertEvent = db.prepare('INSERT OR REPLACE INTO events (id, championship_id, name, date, location, status) VALUES (?, ?, ?, ?, ?, ?)');
 
 const transaction = db.transaction(() => {

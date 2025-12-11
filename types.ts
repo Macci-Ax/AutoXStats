@@ -8,6 +8,7 @@ export enum Championship {
 
 export interface Driver {
   id: string;
+  originalId?: string; // Real DB ID if 'id' is composite
   name: string;
   team: string;
   car: string;

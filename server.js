@@ -36,20 +36,17 @@ app.get('/api/drivers', (req, res) => {
     // Aggregation Query
     const query = `
         SELECT 
-            d.id, 
+            d.id as driver_id,
+            dp.class_id,
             d.name, 
             d.team, 
             d.car, 
             d.start_number as number, 
             c.name as driverClass,
             d.bio,
-            d.season_rank,
-            d.wins as static_wins,
-            d.second_places as static_second,
-            d.third_places as static_third,
+            dp.rank as season_rank,
             d.heat_wins as static_heat,
-            d.podiums as static_podiums,
-            d.points as static_points,
+            dp.points as static_points,
             c.championship_id as champ_id,
             SUM(r.points) as calc_points,
             COUNT(CASE WHEN r.rank = 1 THEN 1 END) as calc_wins,
@@ -59,10 +56,11 @@ app.get('/api/drivers', (req, res) => {
             COUNT(r.id) as races,
             COUNT(CASE WHEN r.rank <= 3 THEN 1 END) as calc_podiums
         FROM drivers d
-        LEFT JOIN race_results r ON d.id = r.driver_id
-        LEFT JOIN classes c ON d.current_class_id = c.id
-        GROUP BY d.id
-        ORDER BY d.current_class_id, COALESCE(SUM(r.points), d.points) DESC
+        JOIN driver_participations dp ON d.id = dp.driver_id
+        JOIN classes c ON dp.class_id = c.id
+        LEFT JOIN race_results r ON d.id = r.driver_id AND dp.class_id = r.class_id
+        GROUP BY d.id, dp.class_id
+        ORDER BY driverClass, COALESCE(SUM(r.points), dp.points) DESC
     `;
 
     db.all(query, [], (err, rows) => {
@@ -75,8 +73,13 @@ app.get('/api/drivers', (req, res) => {
         // Transform to match Frontend Interface 'Driver'
         const drivers = rows.map(row => {
             const hasRaces = row.races > 0;
+            // Use composite ID for unique React keys if same driver is in multiple classes
+            // Format: driver_id::class_id
+            const uniqueId = row.class_id ? `${row.driver_id}::${row.class_id}` : row.driver_id;
+
             return {
-                id: row.id,
+                id: uniqueId,
+                originalId: row.driver_id, // Keep original ID for detailed queries
                 name: row.name,
                 team: row.team || "",
                 car: row.car || "",

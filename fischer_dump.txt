@@ -1,0 +1,14 @@
+--- Classes matching '06' ---
+
+--- Results for drv_6798f633 ---
+{"id":"d_k6","championship_id":"DRCV","name":"Klasse 06"}
+{"id":"w_k6","championship_id":"WACV","name":"Klasse 06"}
+ClassID: d_lang | Name: Langstrecke | Champ: DRCV | Rank: 23
+ClassID: d_k6 | Name: Klasse 06 | Champ: DRCV | Rank: 7
+ClassID: d_lang | Name: Langstrecke | Champ: DRCV | Rank: 1
+ClassID: d_lang | Name: Langstrecke | Champ: DRCV | Rank: 2
+ClassID: d_sc_div2 | Name: Super Cup Div 2 | Champ: DRCV | Rank: 6
+ClassID: d_k6 | Name: Klasse 06 | Champ: DRCV | Rank: 2
+ClassID: d_el_div2 | Name: Endlauf Div 2 | Champ: DRCV | Rank: 3
+ClassID: d_k6 | Name: Klasse 06 | Champ: DRCV | Rank: 3
+ClassID: d_el_div2 | Name: Endlauf Div 2 | Champ: DRCV | Rank: 8

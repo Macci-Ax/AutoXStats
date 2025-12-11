@@ -179,14 +179,42 @@ def process_pdf(pdf_path):
                                nr = int(row[col_map['nr']].split('\n')[0])
                            except: pass
                            
+                        # Calculate points based on Rank
+                        # Standard (Classes): 1->9, 2->7, 3->6... 8->1
+                        # Langstrecke: 40, 35, 30, 27, 25, 23, 21, 19, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+                        
                         points = 0
-                        total_time = None
+                        is_langstrecke = 'lang' in current_class_id.lower()
+                        
+                        if is_langstrecke:
+                            # 1=40, 2=35, 3=30
+                            lang_top_three = {1: 40, 2: 35, 3: 30}
+                            if rank in lang_top_three:
+                                points = lang_top_three[rank]
+                            elif rank == 4: points = 27
+                            elif rank == 5: points = 25
+                            elif rank == 6: points = 23
+                            elif rank == 7: points = 21
+                            elif rank == 8: points = 19
+                            elif rank == 9: points = 17
+                            elif rank >= 10 and rank <= 25:
+                                # 10->16, 11->15 ... 25->1
+                                # Formula: 16 - (rank - 10) = 26 - rank
+                                points = 26 - rank
+                            else:
+                                points = 0
+                        else:
+                            # Standard Class Points
+                            points_map = {1: 9, 2: 7, 3: 6, 4: 5, 5: 4, 6: 3, 7: 2, 8: 1}
+                            points = points_map.get(rank, 0)
+
                         if 'points' in col_map and row[col_map['points']]:
+                            # Still parse total_time if present in points column (sometimes mixed)
                             val = row[col_map['points']]
                             parts = val.split('\n')
                             for p in parts:
                                 if ',' in p: total_time = p
-                                elif p.isdigit(): points = int(p)
+                                # We ignore the points value from PDF as we calculated it from rank
                         
                         laps = 0
                         if 'laps' in col_map and row[col_map['laps']]:
@@ -207,33 +235,22 @@ def process_pdf(pdf_path):
                         # Store Driver
                         drv_id = find_or_create_driver(cursor, driver_name, team, None, nr, current_class_id)
                         
+                        # Ensure participation record exists
+                        cursor.execute("""
+                            INSERT OR IGNORE INTO driver_participations (driver_id, class_id)
+                            VALUES (?, ?)
+                        """, (drv_id, current_class_id))
+                        
                         # Store Result (Result ID unique per driver per event PER CLASS)
                         res_id = f"res_{event_id}_{drv_id}_{current_class_id}"
                         
-                        # Upsert Result including heat wins (stored in heat_wins column, which we mapped in init)
-                        # Wait, init_db.py schema for race_results: 
-                        # id, event_id, driver_id, class_id, rank, points, laps, total_time
-                        # It DOES NOT have heat_wins column in race_results table yet?
-                        # It has `heat_wins` in DRIVERS table (aggregated).
-                        # Using `race_results` for raw data.
-                        # I should probably add `heat_wins` to `race_results` too?
-                        # Or update the driver agg immediately?
-                        # For now, I will update the driver stats later or aggregate.
-                        # BUT the user wants the "1/2/3/4 values" (heat wins) to be read correctly.
-                        # I will add `heat_wins` to `race_results` to be safe.
-                        
-                        # Let's check schema in init_db.py again... 
-                        # race_results: id, event_id, driver_id, class_id, rank, points, laps, total_time
-                        # MISSING heat_wins.
+                        # Upsert Result including heat wins (NOW adding heat_wins to race_results schema!)
+                        # We must update init_db.py schema for race_results to include heat_wins (done in previous step)
                         
                         cursor.execute("""
                             INSERT OR REPLACE INTO race_results (id, event_id, driver_id, class_id, rank, points, laps, total_time, heat_wins)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """, (res_id, event_id, drv_id, current_class_id, rank, points, laps, total_time, heat_wins))
-                        
-                        # Also update driver aggregation (simple increment? No, full recalc is better)
-                        # I'll rely on the API aggregator to do the math from race_results if I store heat info there.
-                        # I MUST add heat_wins to race_results schema first!
                 
                 except Exception as e:
                     # print(f"    Error parsing row: {e}")
