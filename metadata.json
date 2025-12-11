@@ -1,0 +1,8 @@
+{
+  "name": "AutoX-Stats DACH",
+  "description": "Die umfangreichste Autocross-Statistik-Plattform im deutschsprachigen Raum. Ergebnisse, Fahrerprofile, Event-Kalender und High-Quality Mediengalerie für DRCV, WACV, NWDAV, SWASV und DACM.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
