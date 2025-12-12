@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, Trophy, BarChart2, ChevronLeft, Flag, Medal, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
 import { MOCK_DRIVERS } from '../constants';
 import { Championship, Driver } from '../types';
@@ -21,6 +21,18 @@ export const Drivers: React.FC = () => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
   const [recentResults, setRecentResults] = useState<RaceResult[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string>('Alle');
+  const [showAllRaces, setShowAllRaces] = useState(false);
+  const detailViewRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to detail view on mobile when a driver is selected
+  useEffect(() => {
+    if (selectedDriver && detailViewRef.current && window.innerWidth < 1024) {
+      detailViewRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [selectedDriver]);
+
+  const categories = ['Alle', 'Klasse', 'Endlauf', 'Langstrecke', 'Super Cup'];
 
   const toggleClass = (cls: string) => {
     setExpandedClasses(prev => ({
@@ -84,6 +96,29 @@ export const Drivers: React.FC = () => {
     return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
   });
 
+  // Initial Auto-Expand logic for Langstrecke
+  useEffect(() => {
+    if (sortedClasses.length > 0) {
+      setExpandedClasses(prev => {
+        const next = { ...prev };
+        let changed = false;
+        sortedClasses.forEach(cls => {
+          if (cls.toLowerCase().includes('langstrecke') && !next[cls]) {
+            next[cls] = true;
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    }
+  }, [sortedClasses.length, activeChampionship]);
+
+  const filteredClassesByCategory = sortedClasses.filter(cls => {
+    if (activeCategory === 'Alle') return true;
+    // Special handling for strict or partial matching if needed, but includes is usually fine
+    return cls.toLowerCase().includes(activeCategory.toLowerCase());
+  });
+
   const renderDetail = (driver: Driver) => {
     const isLangstrecke = driver.driverClass.includes('Langstrecke');
 
@@ -98,11 +133,17 @@ export const Drivers: React.FC = () => {
       return acc;
     }, {} as Record<string, { points: number, wins: number }>);
 
-    const chartData = [
-      { name: '1. Platz', Anzahl: driver.wins, color: '#EAB308' },
-      { name: '2. Platz', Anzahl: driver.secondPlaces, color: '#94A3B8' },
-      { name: '3. Platz', Anzahl: driver.thirdPlaces, color: '#B45309' }
-    ];
+    const chartData = Array.from({ length: 10 }, (_, i) => {
+      const rank = i + 1;
+      return {
+        name: `${rank}. Platz`,
+        Anzahl: recentResults.filter(r => r.rank === rank).length,
+        color: rank === 1 ? '#EAB308' :
+          rank === 2 ? '#94A3B8' :
+            rank === 3 ? '#B45309' :
+              '#334155' // Default color for other ranks
+      };
+    });
 
     return (
       <div className="bg-slate-800 rounded-xl border border-slate-700 animate-fade-in sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar">
@@ -132,11 +173,7 @@ export const Drivers: React.FC = () => {
 
           {driver.bio && <p className="text-slate-300 mb-6 italic border-l-2 border-slate-600 pl-3">{driver.bio}</p>}
 
-          <div className={`grid grid-cols-2 ${isLangstrecke ? 'md:grid-cols-4' : 'md:grid-cols-5'} gap-4 mb-8`}>
-            <div className="bg-slate-900 p-3 rounded text-center flex flex-col items-center justify-center">
-              <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Gesamtpunkte</div>
-              <div className="text-2xl font-bold text-white">{driver.points}</div>
-            </div>
+          <div className={`grid grid-cols-2 ${isLangstrecke ? 'md:grid-cols-3' : 'md:grid-cols-4'} gap-4 mb-8`}>
 
             <div className="bg-slate-900 p-3 rounded text-center flex flex-col items-center justify-center relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-1 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -145,7 +182,9 @@ export const Drivers: React.FC = () => {
               <div className="text-xs text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
                 <Medal size={14} className="text-yellow-500" /> 1. Platz
               </div>
-              <div className="text-2xl font-bold text-yellow-500">{driver.wins}</div>
+              <div className="text-2xl font-bold text-yellow-500">
+                {recentResults.filter(r => r.rank === 1).length}
+              </div>
             </div>
 
             <div className="bg-slate-900 p-3 rounded text-center flex flex-col items-center justify-center relative overflow-hidden group">
@@ -155,7 +194,9 @@ export const Drivers: React.FC = () => {
               <div className="text-xs text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
                 <Medal size={14} className="text-slate-400" /> 2. Platz
               </div>
-              <div className="text-2xl font-bold text-slate-400">{driver.secondPlaces}</div>
+              <div className="text-2xl font-bold text-slate-400">
+                {recentResults.filter(r => r.rank === 2).length}
+              </div>
             </div>
 
             <div className="bg-slate-900 p-3 rounded text-center flex flex-col items-center justify-center relative overflow-hidden group">
@@ -165,7 +206,9 @@ export const Drivers: React.FC = () => {
               <div className="text-xs text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
                 <Medal size={14} className="text-amber-700" /> 3. Platz
               </div>
-              <div className="text-2xl font-bold text-amber-700">{driver.thirdPlaces}</div>
+              <div className="text-2xl font-bold text-amber-700">
+                {recentResults.filter(r => r.rank === 3).length}
+              </div>
             </div>
 
             {/* Hide Heat Wins for Langstrecke */}
@@ -249,7 +292,7 @@ export const Drivers: React.FC = () => {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 30 }}>
                 <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '4px', color: '#fff' }}
                   cursor={{ fill: '#334155', opacity: 0.4 }}
@@ -266,12 +309,29 @@ export const Drivers: React.FC = () => {
           {/* Recent Races Section */}
           {recentResults.length > 0 && (
             <div className="mt-8 pt-6 border-t border-slate-700/50">
-              <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase flex items-center gap-2">
-                <Calendar size={16} /> Letzte Rennen
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold text-slate-400 uppercase flex items-center gap-2">
+                  <Calendar size={16} /> Letzte Rennen
+                </h3>
+                <button
+                  onClick={() => setShowAllRaces(!showAllRaces)}
+                  className="text-xs font-bold text-slate-500 hover:text-white transition flex items-center gap-1 bg-slate-800 px-2 py-1 rounded"
+                >
+                  {showAllRaces ? (
+                    <>
+                      Weniger anzeigen <ChevronUp size={14} />
+                    </>
+                  ) : (
+                    <>
+                      Alle anzeigen ({recentResults.length}) <ChevronDown size={14} />
+                    </>
+                  )}
+                </button>
+              </div>
               <div className="space-y-2">
                 {(() => {
-                  const uniqueDates = Array.from(new Set(recentResults.map(r => r.event_date))).slice(0, 3);
+                  const allUniqueDates = Array.from(new Set(recentResults.map(r => r.event_date)));
+                  const uniqueDates = showAllRaces ? allUniqueDates : allUniqueDates.slice(0, 3);
 
                   return uniqueDates.map(date => {
                     const eventResults = recentResults.filter(r => r.event_date === date);
@@ -382,17 +442,34 @@ export const Drivers: React.FC = () => {
         </div>
       </div>
 
+      <div className="flex overflow-x-auto pb-2 gap-2 mb-6 custom-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
+        {categories.map(cat => (
+          <button
+            key={cat}
+            onClick={() => setActiveCategory(cat)}
+            className={`
+              px-5 py-2 rounded-full font-bold text-sm whitespace-nowrap transition-all border
+              ${activeCategory === cat
+                ? 'bg-red-600 text-white border-red-500 shadow-lg shadow-red-900/40' // Active state
+                : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700 hover:text-white hover:border-slate-600'} // Inactive state
+            `}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* List View */}
         <div className={`space-y-8 lg:col-span-${selectedDriver ? '1' : '3'} transition-all duration-300`}>
 
-          {sortedClasses.length === 0 && (
+          {filteredClassesByCategory.length === 0 && (
             <div className="p-12 text-center text-slate-500 bg-slate-800 rounded-lg border border-slate-700 border-dashed">
               <p className="text-lg">Keine Fahrer für {activeChampionship} gefunden.</p>
             </div>
           )}
 
-          {sortedClasses.map(cls => (
+          {filteredClassesByCategory.map(cls => (
             <div key={cls} className="space-y-3">
               <div
                 onClick={() => toggleClass(cls)}
@@ -465,7 +542,7 @@ export const Drivers: React.FC = () => {
 
         {/* Detail View */}
         {selectedDriver && (
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2" ref={detailViewRef}>
             {renderDetail(selectedDriver)}
           </div>
         )}
