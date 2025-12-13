@@ -15,11 +15,14 @@ console.log(`Datenbank erstellt unter: ${dbPath}`);
 
 // 2. Schema definieren (Tabellen erstellen)
 const schema = `
+  PRAGMA foreign_keys = OFF;
+  DROP TABLE IF EXISTS driver_participations;
   DROP TABLE IF EXISTS race_results;
   DROP TABLE IF EXISTS events;
   DROP TABLE IF EXISTS drivers;
   DROP TABLE IF EXISTS classes;
   DROP TABLE IF EXISTS championships;
+  PRAGMA foreign_keys = ON;
 
   CREATE TABLE championships (
       id TEXT PRIMARY KEY,
@@ -73,6 +76,11 @@ const schema = `
       laps INTEGER,
       total_time TEXT,
       heat_wins INTEGER DEFAULT 0,
+      start_number INTEGER,
+      car TEXT,
+      reconstructed INTEGER DEFAULT 0,
+      license_type TEXT DEFAULT 'DRCV',
+      championship_points INTEGER DEFAULT 0,
       FOREIGN KEY (event_id) REFERENCES events(id),
       FOREIGN KEY (driver_id) REFERENCES drivers(id),
       FOREIGN KEY (class_id) REFERENCES classes(id)

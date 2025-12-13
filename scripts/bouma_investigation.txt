@@ -1,0 +1,43 @@
+Drivers matching 'Bouma' or 'René':
+  ('drv_02719198', 'René Bouma', 210)
+
+Checking results for driver: René Bouma (id: drv_02719198)
+
+Results (7 total):
+  Sachsenberg (Reconstructed): rank=3, points=30, license=DRCV, champ_pts=30
+  Dauborn: rank=6, points=23, license=DRCV, champ_pts=23
+  Hoope 24.05.2025: rank=1, points=40, license=DRCV, champ_pts=40
+  Gleidorf: rank=2, points=35, license=DRCV, champ_pts=35
+  Löhne 10.08.2025: rank=20, points=6, license=DRCV, champ_pts=6
+  Herbern: rank=1, points=40, license=DRCV, champ_pts=40
+  Vellern 24.08.2025: rank=1, points=40, license=DRCV, champ_pts=40
+
+Total points: 214
+Total championship_points: 214
+
+=== ALL EVENTS IN DB ===
+  evt_9e66a5ea: Itterbeck 27.04.2025 (2025-04-27)
+  evt_sachsenberg_2025_rec: Sachsenberg (Reconstructed) (2025-04-27)
+  e3: WACV Lauf 1 - Waldorf (2025-05-04)
+  e1: Dauborn (2025-05-18)
+  evt_79ec0d1d: Hoope 24.05.2025 (2025-05-24)
+  evt_01d12b25: Extertal 01.06.2025 (2025-06-01)
+  e2: Gleidorf (2025-06-22)
+  evt_596dd9da: Eppe 13.07.2025 (2025-07-13)
+  evt_f4c9dad2: Löhne 10.08.2025 (2025-08-10)
+  e4: Herbern (2025-08-17)
+  evt_17e3a4bc: Vellern 24.08.2025 (2025-08-24)
+  e5: Osnabrück (2025-09-07)
+  e6: Saisonfinale Itterbeck (2025-09-28)
+
+=== OFFICIAL PDF COLUMNS (from image 2) ===
+  Daubo -> Dauborn
+  Hoope -> ???
+  Exte -> Extertal
+  Gleidg -> Gleidorf
+  Eppe -> Eppe
+  Sachse -> Sachsenberg
+  Löhne -> Löhne
+  Herbe -> Herbern
+  Veller -> Vellern
+  Osnab -> Osnabrück

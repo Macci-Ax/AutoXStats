@@ -1,0 +1,45 @@
+=== CHAMPIONSHIP POINTS SUMMARY ===
+
+Total race_results: 1851
+
+By license type:
+  DRCV: 1851 results, 10300 total championship points
+
+TL drivers with championship_points > 0: 0
+  ✓ PASS: All TL drivers have 0 championship points
+
+=== EVENTS ===
+  Itterbeck 27.04.2025 (2025-04-27): 133 results, 0 TL drivers
+  Sachsenberg (Reconstructed) (2025-04-27): 164 results, 0 TL drivers
+  WACV Lauf 1 - Waldorf (2025-05-04): 0 results, 0 TL drivers
+  Dauborn (2025-05-18): 163 results, 0 TL drivers
+  Hoope 24.05.2025 (2025-05-24): 156 results, 0 TL drivers
+  Extertal 01.06.2025 (2025-06-01): 140 results, 0 TL drivers
+  Gleidorf (2025-06-22): 213 results, 0 TL drivers
+  Eppe 13.07.2025 (2025-07-13): 99 results, 0 TL drivers
+  Löhne 10.08.2025 (2025-08-10): 209 results, 0 TL drivers
+  Herbern (2025-08-17): 216 results, 0 TL drivers
+  Vellern 24.08.2025 (2025-08-24): 206 results, 0 TL drivers
+  Osnabrück (2025-09-07): 152 results, 0 TL drivers
+  Saisonfinale Itterbeck (2025-09-28): 0 results, 0 TL drivers
+
+=== SAMPLE: Championship Point Shift Verification ===
+
+Dauborn - d_k1:
+  Rank 1: Mike Hellweg [DRCV] -> 9 pts
+  Rank 2: Kai Schlangen [DRCV] -> 7 pts
+  Rank 3: Marvin Kuhn [DRCV] -> 6 pts
+  Rank 4: Jonas Wichmann [DRCV] -> 5 pts
+  Rank 5: Stefan Overmeyer [DRCV] -> 4 pts
+  Rank 6: Leon Kocken [DRCV] -> 3 pts
+  Rank 7: Niklas Krämer [DRCV] -> 2 pts
+
+Eppe 13.07.2025 - d_k1:
+  Rank 1: Mike Hellweg [DRCV] -> 9 pts
+  Rank 2: Jeremy de Vries [DRCV] -> 7 pts
+  Rank 3: Sven Cordes [DRCV] -> 6 pts
+  Rank 4: Jonas Wichmann [DRCV] -> 5 pts
+  Rank 5: Hans Nijhuis [DRCV] -> 4 pts
+  Rank 6: Gerhard Moskopp [DRCV] -> 3 pts
+  Rank 7: Marvin Kuhn [DRCV] -> 2 pts
+  Rank 8: Leon Kocken [DRCV] -> 1 pts

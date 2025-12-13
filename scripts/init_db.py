@@ -96,11 +96,21 @@ def init_db():
     events = [
         ('e1', 'DRCV', 'Dauborn', '2025-05-18', 'Dauborn', 'COMPLETED', None),
         ('e2', 'DRCV', 'Gleidorf', '2025-06-22', 'Gleidorf', 'COMPLETED', None),
-        ('e3', 'WACV', 'WACV Lauf 1 - Waldorf', '2025-05-04', 'Waldorf', 'COMPLETED', None),
         ('e4', 'DRCV', 'Herbern', '2025-08-17', 'Herbern', 'COMPLETED', None),
         ('e5', 'DRCV', 'Osnabrück', '2025-09-07', 'Osnabrück', 'COMPLETED', None),
-        ('e6', 'DRCV', 'Saisonfinale Itterbeck', '2025-09-28', 'Itterbeck', 'UPCOMING', None), # This was the finale
-        ('e7', 'DRCV', 'Itterbeck Lauf 1', '2025-04-27', 'Itterbeck', 'COMPLETED', None) # The one from the PDF
+        ('e6', 'DRCV', 'Saisonfinale Itterbeck', '2025-09-28', 'Itterbeck', 'UPCOMING', None),
+        ('e7', 'DRCV', 'Itterbeck Lauf 1', '2025-04-27', 'Itterbeck', 'COMPLETED', None),
+        
+        # WACV Events (from PDF headers)
+        ('w_ev_1', 'WACV', 'AC Waldorf', '2025-01-01', 'Waldorf', 'COMPLETED', None),
+        ('w_ev_2', 'WACV', 'MSC Extertal', '2025-01-01', 'Extertal', 'COMPLETED', None),
+        ('w_ev_3', 'WACV', 'RSC Düdinghausen', '2025-01-01', 'Düdinghausen', 'COMPLETED', None),
+        ('w_ev_4', 'WACV', 'RSG Aartal Eppe', '2025-01-01', 'Aartal', 'COMPLETED', None),
+        ('w_ev_5', 'WACV', 'MSC Linsburg', '2025-01-01', 'Linsburg', 'COMPLETED', None),
+        ('w_ev_6', 'WACV', 'MSF Lichtenau', '2025-01-01', 'Lichtenau', 'COMPLETED', None),
+        ('w_ev_7', 'WACV', 'RT Oberschledorn', '2025-01-01', 'Oberschledorn', 'COMPLETED', None),
+        ('w_ev_8', 'WACV', 'MSC Crazy Horses', '2025-01-01', 'Crazy Horses', 'COMPLETED', None),
+        ('w_ev_9', 'WACV', 'MSC Hesborn', '2025-01-01', 'Hesborn', 'COMPLETED', None)
     ]
     cursor.executemany("INSERT INTO events VALUES (?, ?, ?, ?, ?, ?, ?)", events)
 

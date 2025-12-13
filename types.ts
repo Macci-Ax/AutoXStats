@@ -10,18 +10,7 @@ export interface Driver {
   id: string;
   originalId?: string; // Real DB ID if 'id' is composite
   name: string;
-  team: string;
-  car: string;
-  number: number;
-  driverClass: string; // New field for categorization (e.g., "Klasse 01", "Langstrecke")
-  championships: Championship[];
-  points: number;
-  seasonRank?: number; // Current rank in championship
-  wins: number; // Final race wins
-  secondPlaces: number; // Final race 2nd places
-  thirdPlaces: number; // Final race 3rd places
-  heatWins: number; // Qualifying/Heat wins (from 1/2/3/4 columns)
-  podiums: number; // Top 3
+  verified?: boolean;
   avatarUrl?: string;
   socials?: {
     instagram?: string;
@@ -29,6 +18,33 @@ export interface Driver {
     website?: string;
   };
   bio?: string;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+}
+
+export interface DriverStats {
+  points: number;
+  seasonRank?: number; // Current rank in championship
+  wins: number; // Final race wins
+  secondPlaces: number; // Final race 2nd places
+  thirdPlaces: number; // Final race 3rd places
+  fourthPlaces: number; // Final race 4th places
+  fifthPlaces: number; // Final race 5th places
+  heatWins: number; // Qualifying/Heat wins (from 1/2/3/4 columns)
+  podiums: number; // Top 3
+}
+
+export interface LeaderboardEntry {
+  driver: Driver;
+  team?: Team;
+  stats: DriverStats;
+  car?: string; // Car is often event/season specific but good to have in leaderboard
+  number?: number;
+  driverClass?: string;
+  championships?: Championship[];
 }
 
 export interface Event {

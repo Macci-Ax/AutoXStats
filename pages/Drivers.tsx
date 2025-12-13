@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, Trophy, BarChart2, ChevronLeft, Flag, Medal, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
 import { MOCK_DRIVERS } from '../constants';
-import { Championship, Driver } from '../types';
+import { Championship, Driver, LeaderboardEntry } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface RaceResult {
@@ -17,8 +17,8 @@ interface RaceResult {
 export const Drivers: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeChampionship, setActiveChampionship] = useState<Championship | null>(null);
-  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [selectedEntry, setSelectedEntry] = useState<LeaderboardEntry | null>(null);
+  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [expandedClasses, setExpandedClasses] = useState<Record<string, boolean>>({});
   const [recentResults, setRecentResults] = useState<RaceResult[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('Alle');
@@ -27,10 +27,10 @@ export const Drivers: React.FC = () => {
 
   // Scroll to detail view on mobile when a driver is selected
   useEffect(() => {
-    if (selectedDriver && detailViewRef.current && window.innerWidth < 1024) {
+    if (selectedEntry && detailViewRef.current && window.innerWidth < 1024) {
       detailViewRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, [selectedDriver]);
+  }, [selectedEntry]);
 
   const categories = ['Alle', 'Klasse', 'Endlauf', 'Langstrecke', 'Super Cup'];
 
@@ -44,13 +44,14 @@ export const Drivers: React.FC = () => {
   useEffect(() => {
     fetch('http://localhost:3000/api/drivers')
       .then(res => res.json())
-      .then(data => setDrivers(data))
+      .then(data => setEntries(data))
       .catch(err => console.error("Failed to fetch drivers:", err));
   }, []);
 
   useEffect(() => {
-    if (selectedDriver) {
-      const driverId = selectedDriver.originalId || selectedDriver.id.split('::')[0];
+    if (selectedEntry) {
+      const driverId = selectedEntry.driver.originalId || selectedEntry.driver.id;
+      // Note: Backend might need adjustment if ID is complex, but server.js returns driver_id as id in driver object
       fetch(`http://localhost:3000/api/drivers/${driverId}/results`)
         .then(res => res.json())
         .then(data => setRecentResults(data))
@@ -58,39 +59,41 @@ export const Drivers: React.FC = () => {
     } else {
       setRecentResults([]);
     }
-  }, [selectedDriver]);
+  }, [selectedEntry]);
 
   // Filter drivers based on selection
-  const safeDrivers = Array.isArray(drivers) ? drivers : [];
-  const filteredDrivers = safeDrivers.filter(driver => {
+  const safeEntries = Array.isArray(entries) ? entries : [];
+  const filteredEntries = safeEntries.filter(entry => {
 
     // If a championship is selected, only show drivers from that champ
-    if (activeChampionship && !driver.championships.includes(activeChampionship)) {
+    if (activeChampionship && (!entry.championships || !entry.championships.includes(activeChampionship))) {
       return false;
     }
     // Search logic
-    const matchesSearch = driver.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      driver.team.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      driver.number.toString().includes(searchTerm);
+    const searchTermLower = searchTerm.toLowerCase();
+    const teamName = entry.team ? entry.team.name.toLowerCase() : '';
+    const matchesSearch = entry.driver.name.toLowerCase().includes(searchTermLower) ||
+      teamName.includes(searchTermLower) ||
+      (entry.number && entry.number.toString().includes(searchTerm));
     return matchesSearch;
   });
 
   // Group drivers by class
-  const driversByClass = filteredDrivers.reduce((acc, driver) => {
-    const cls = driver.driverClass || 'Unbekannt';
+  const entriesByClass = filteredEntries.reduce((acc, entry) => {
+    const cls = entry.driverClass || 'Unbekannt';
     if (!acc[cls]) {
       acc[cls] = [];
     }
-    acc[cls].push(driver);
+    acc[cls].push(entry);
     return acc;
-  }, {} as Record<string, Driver[]>);
+  }, {} as Record<string, LeaderboardEntry[]>);
 
   // Sort drivers within each class by points descending
-  Object.keys(driversByClass).forEach(cls => {
-    driversByClass[cls].sort((a, b) => b.points - a.points);
+  Object.keys(entriesByClass).forEach(cls => {
+    entriesByClass[cls].sort((a, b) => b.stats.points - a.stats.points);
   });
 
-  const sortedClasses = Object.keys(driversByClass).sort((a, b) => {
+  const sortedClasses = Object.keys(entriesByClass).sort((a, b) => {
     // Custom sort: "Langstrecke" at the bottom (or top? usually separated). 
     // Let's stick to alphanumeric natural sort for "Klasse 1", "Klasse 2", "Klasse 10".
     return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
@@ -119,8 +122,8 @@ export const Drivers: React.FC = () => {
     return cls.toLowerCase().includes(activeCategory.toLowerCase());
   });
 
-  const renderDetail = (driver: Driver) => {
-    const isLangstrecke = driver.driverClass.includes('Langstrecke');
+  const renderDetail = (entry: LeaderboardEntry) => {
+    const isLangstrecke = entry.driverClass?.includes('Langstrecke');
 
     // Group results by class for the breakdown view
     const groupedResults = recentResults.reduce((acc, result) => {
@@ -149,7 +152,7 @@ export const Drivers: React.FC = () => {
       <div className="bg-slate-800 rounded-xl border border-slate-700 animate-fade-in sticky top-4 max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar">
         <div className="h-32 bg-gradient-to-r from-red-900 to-slate-900 relative">
           <button
-            onClick={() => setSelectedDriver(null)}
+            onClick={() => setSelectedEntry(null)}
             className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white px-3 py-1 rounded text-sm transition"
           >
             Schließen
@@ -158,20 +161,20 @@ export const Drivers: React.FC = () => {
         <div className="px-6 pb-6">
           <div className="relative -mt-16 mb-4 flex justify-between items-end">
             <img
-              src={driver.avatarUrl}
-              alt={driver.name}
+              src={entry.driver.avatarUrl}
+              alt={entry.driver.name}
               className="w-32 h-32 rounded-full border-4 border-slate-800 bg-slate-700 object-cover"
             />
             <div className="text-right">
-              <div className="text-4xl font-black text-white">#{driver.number}</div>
-              <div className="text-slate-400">{driver.driverClass}</div>
+              <div className="text-4xl font-black text-white">#{entry.number}</div>
+              <div className="text-slate-400">{entry.driverClass}</div>
             </div>
           </div>
 
-          <h2 className="text-3xl font-bold text-white mb-1">{driver.name}</h2>
-          <p className="text-red-500 font-medium mb-4">{driver.team}</p>
+          <h2 className="text-3xl font-bold text-white mb-1">{entry.driver.name}</h2>
+          <p className="text-red-500 font-medium mb-4">{entry.team ? entry.team.name : ''}</p>
 
-          {driver.bio && <p className="text-slate-300 mb-6 italic border-l-2 border-slate-600 pl-3">{driver.bio}</p>}
+          {entry.driver.bio && <p className="text-slate-300 mb-6 italic border-l-2 border-slate-600 pl-3">{entry.driver.bio}</p>}
 
           <div className={`grid grid-cols-2 ${isLangstrecke ? 'md:grid-cols-3' : 'md:grid-cols-4'} gap-4 mb-8`}>
 
@@ -215,19 +218,17 @@ export const Drivers: React.FC = () => {
             {!isLangstrecke && (
               <div className="bg-slate-900 p-3 rounded text-center flex flex-col items-center justify-center">
                 <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Laufsiege</div>
-                <div className="text-2xl font-bold text-orange-500">{driver.heatWins}</div>
+                <div className="text-2xl font-bold text-orange-500">{entry.stats.heatWins}</div>
               </div>
             )}
           </div>
 
           {/* UPDATED: Class Breakdown using official driver entries */}
           {(() => {
-            // Find all driver entries that belong to this person (same originalId or similar name match if id is complex)
-            // We rely on originalId which we preserved in the API response
-            const allClassParticipations = drivers.filter(d =>
-              d.originalId === driver.originalId ||
-              (d.name === driver.name && d.team === driver.team) // Fallback safety
-            ).sort((a, b) => b.points - a.points);
+            // Find all driver entries that belong to this person (same ID)
+            const allClassParticipations = entries.filter(e =>
+              e.driver.id === entry.driver.id
+            ).sort((a, b) => b.stats.points - a.stats.points);
 
             if (allClassParticipations.length > 1) {
               return (
@@ -235,35 +236,35 @@ export const Drivers: React.FC = () => {
                   <h3 className="text-sm font-bold text-slate-400 mb-3 uppercase">Punkte nach Klasse</h3>
                   <div className="space-y-2">
                     {allClassParticipations.map((p) => (
-                      <div key={p.id} className="flex justify-between items-center bg-slate-900 p-3 rounded border border-slate-800 hover:border-slate-600 transition group">
+                      <div key={p.driver.id + p.driverClass} className="flex justify-between items-center bg-slate-900 p-3 rounded border border-slate-800 hover:border-slate-600 transition group">
 
                         <div className="flex items-center gap-3">
                           {/* Rank Badge */}
                           <div className={`
                              w-8 h-8 flex items-center justify-center rounded-full font-bold text-lg
-                             ${p.seasonRank === 1 ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' :
-                              p.seasonRank === 2 ? 'bg-slate-400/20 text-slate-300 border border-slate-400/50' :
-                                p.seasonRank === 3 ? 'bg-amber-700/20 text-amber-600 border border-amber-700/50' :
+                             ${p.stats.seasonRank === 1 ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' :
+                              p.stats.seasonRank === 2 ? 'bg-slate-400/20 text-slate-300 border border-slate-400/50' :
+                                p.stats.seasonRank === 3 ? 'bg-amber-700/20 text-amber-600 border border-amber-700/50' :
                                   'bg-slate-800 text-slate-500 border border-slate-700'}
                            `}>
-                            {p.seasonRank || '-'}
+                            {p.stats.seasonRank || '-'}
                           </div>
 
                           <div>
                             <span className="text-slate-200 font-bold block">{p.driverClass}</span>
                             <span className="text-xs text-slate-500 uppercase">
-                              {p.seasonRank === 1 ? 'Meister' : 'Platzierung'}
+                              {p.stats.seasonRank === 1 ? 'Meister' : 'Platzierung'}
                             </span>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-6">
                           <div className="text-right hidden sm:block">
-                            <span className="block text-slate-200 font-bold">{p.wins}</span>
+                            <span className="block text-slate-200 font-bold">{p.stats.wins}</span>
                             <span className="text-xs text-slate-500 uppercase">Siege</span>
                           </div>
                           <div className="text-right">
-                            <span className="block text-white font-black text-xl">{p.points}</span>
+                            <span className="block text-white font-black text-xl">{p.stats.points}</span>
                             <span className="text-xs text-slate-500 uppercase">Punkte</span>
                           </div>
                         </div>
@@ -277,13 +278,13 @@ export const Drivers: React.FC = () => {
             return null;
           })()}
 
-          {driver.seasonRank && (
+          {entry.stats.seasonRank && (
             <div className="mb-8 p-4 bg-yellow-900/20 border border-yellow-700/50 rounded-lg flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Trophy className="text-yellow-500" size={24} />
                 <span className="text-yellow-100 font-medium">Aktueller Meisterschaftsrang</span>
               </div>
-              <span className="text-3xl font-black text-yellow-500">#{driver.seasonRank}</span>
+              <span className="text-3xl font-black text-yellow-500">#{entry.stats.seasonRank}</span>
             </div>
           )}
 
@@ -418,7 +419,7 @@ export const Drivers: React.FC = () => {
           <button
             onClick={() => {
               setActiveChampionship(null);
-              setSelectedDriver(null);
+              setSelectedEntry(null);
             }}
             className="bg-slate-800 hover:bg-slate-700 p-2 rounded-full border border-slate-600 transition"
           >
@@ -461,7 +462,7 @@ export const Drivers: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* List View */}
-        <div className={`space-y-8 lg:col-span-${selectedDriver ? '1' : '3'} transition-all duration-300`}>
+        <div className={`space-y-8 lg:col-span-${selectedEntry ? '1' : '3'} transition-all duration-300`}>
 
           {filteredClassesByCategory.length === 0 && (
             <div className="p-12 text-center text-slate-500 bg-slate-800 rounded-lg border border-slate-700 border-dashed">
@@ -481,7 +482,7 @@ export const Drivers: React.FC = () => {
                 </h2>
                 <div className="flex items-center gap-3">
                   <span className="text-xs font-mono text-slate-600 bg-slate-900 px-2 py-0.5 rounded-full">
-                    {driversByClass[cls].length}
+                    {entriesByClass[cls].length}
                   </span>
                   {expandedClasses[cls] ? (
                     <ChevronUp size={20} className="text-slate-500 group-hover:text-slate-300" />
@@ -493,9 +494,9 @@ export const Drivers: React.FC = () => {
 
               {expandedClasses[cls] && (
                 <div className="grid gap-3 animate-fade-in-fast">
-                  {driversByClass[cls].map((driver, index) => {
+                  {entriesByClass[cls].map((entry, index) => {
                     let itemClasses = "p-4 rounded-lg border cursor-pointer transition flex items-center gap-4 group ";
-                    if (selectedDriver?.id === driver.id) {
+                    if (selectedEntry?.driver.id === entry.driver.id) {
                       itemClasses += "bg-slate-700 border-white";
                     } else if (index === 0) {
                       itemClasses += "bg-yellow-900/20 border-yellow-500/50 hover:bg-yellow-900/30";
@@ -509,12 +510,12 @@ export const Drivers: React.FC = () => {
 
                     return (
                       <div
-                        key={driver.id}
-                        onClick={() => setSelectedDriver(driver)}
+                        key={entry.driver.id}
+                        onClick={() => setSelectedEntry(entry)}
                         className={itemClasses}
                       >
                         <div className="relative">
-                          <img src={driver.avatarUrl} alt={driver.name} className="w-12 h-12 rounded-full object-cover border border-slate-600" />
+                          <img src={entry.driver.avatarUrl} alt={entry.driver.name} className="w-12 h-12 rounded-full object-cover border border-slate-600" />
                           {index === 0 && <div className="absolute -top-1 -right-1 bg-slate-900 rounded-full p-0.5"><Medal size={16} className="text-yellow-500 fill-yellow-500/20" /></div>}
                           {index === 1 && <div className="absolute -top-1 -right-1 bg-slate-900 rounded-full p-0.5"><Medal size={16} className="text-slate-400 fill-slate-400/20" /></div>}
                           {index === 2 && <div className="absolute -top-1 -right-1 bg-slate-900 rounded-full p-0.5"><Medal size={16} className="text-amber-700 fill-amber-700/20" /></div>}
@@ -522,14 +523,14 @@ export const Drivers: React.FC = () => {
 
                         <div className="flex-1 min-w-0">
                           <h3 className="font-bold text-white truncate flex items-center gap-2">
-                            {driver.name}
+                            {entry.driver.name}
                           </h3>
-                          <p className="text-sm text-slate-400 truncate">{driver.team}</p>
-                          <p className="text-xs text-slate-500 truncate mt-1 pt-1 opacity-60">#{driver.number}</p>
+                          <p className="text-sm text-slate-400 truncate">{entry.team ? entry.team.name : ''}</p>
+                          <p className="text-xs text-slate-500 truncate mt-1 pt-1 opacity-60">#{entry.number}</p>
                         </div>
                         <div className="text-right hidden sm:block">
-                          <div className="text-lg font-bold text-slate-200">{driver.points} <span className="text-xs text-slate-500 font-normal">Pkt</span></div>
-                          {driver.seasonRank && <div className={`text-xs font-bold ${driver.seasonRank <= 3 ? 'text-yellow-500' : 'text-slate-500'}`}>#{driver.seasonRank}</div>}
+                          <div className="text-lg font-bold text-slate-200">{entry.stats.points} <span className="text-xs text-slate-500 font-normal">Pkt</span></div>
+                          {entry.stats.seasonRank && <div className={`text-xs font-bold ${entry.stats.seasonRank <= 3 ? 'text-yellow-500' : 'text-slate-500'}`}>#{entry.stats.seasonRank}</div>}
                         </div>
                       </div>
                     );
@@ -541,9 +542,9 @@ export const Drivers: React.FC = () => {
         </div>
 
         {/* Detail View */}
-        {selectedDriver && (
+        {selectedEntry && (
           <div className="lg:col-span-2" ref={detailViewRef}>
-            {renderDetail(selectedDriver)}
+            {renderDetail(selectedEntry)}
           </div>
         )}
       </div>

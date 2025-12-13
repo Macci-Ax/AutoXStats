@@ -1,0 +1,42 @@
+﻿=== EVENTS IN DATABASE ===
+  evt_9e66a5ea: Itterbeck 27.04.2025 (2025-04-27) - COMPLETED
+  evt_sachsenberg_2025_rec: Sachsenberg (Reconstructed) (2025-04-27) - reconstructed
+  e3: WACV Lauf 1 - Waldorf (2025-05-04) - COMPLETED
+  e1: Dauborn (2025-05-18) - COMPLETED
+  evt_79ec0d1d: Hoope 24.05.2025 (2025-05-24) - COMPLETED
+  evt_01d12b25: Extertal 01.06.2025 (2025-06-01) - COMPLETED
+  e2: Gleidorf (2025-06-22) - COMPLETED
+  evt_596dd9da: Eppe 13.07.2025 (2025-07-13) - COMPLETED
+  evt_f4c9dad2: L÷hne 10.08.2025 (2025-08-10) - COMPLETED
+  e4: Herbern (2025-08-17) - COMPLETED
+  evt_17e3a4bc: Vellern 24.08.2025 (2025-08-24) - COMPLETED
+  e5: Osnabr³ck (2025-09-07) - COMPLETED
+  e6: Saisonfinale Itterbeck (2025-09-28) - UPCOMING
+
+=== PDFs IN pdf/2025/ ===
+  Dauborn.pdf
+  Eppe.pdf
+  Extertal.pdf
+  Gleidorf.pdf
+  Hellingst.pdf
+  Herbern.pdf
+  Itterbeck.pdf
+  Loehne.pdf
+  Osnabrueck.pdf
+  Vellern.pdf
+
+=== REN╔ BOUMA'S RESULTS ===
+  Sachsenberg (Reconstructed): rank=3, pts=30, champ_pts=30
+  Dauborn: rank=6, pts=23, champ_pts=23
+  Hoope 24.05.2025: rank=1, pts=40, champ_pts=40
+  Gleidorf: rank=2, pts=35, champ_pts=35
+  L÷hne 10.08.2025: rank=20, pts=6, champ_pts=6
+  Herbern: rank=1, pts=40, champ_pts=40
+  Vellern 24.08.2025: rank=1, pts=40, champ_pts=40
+
+Total championship_points in Langstrecke: 214
+
+=== OFFICIAL PDF EVENT DATA (from image 2) ===
+Columns: Itterbo, Daubo, Hoope, Exte, Gleidg, Eppe, Sachse, L÷hne, Herbe, Veller, Osnab
+RenÚ Bouma values: 25, blank, blank, 40, 35, 30, 8, 40, 40, blank = 218
+(That's: 25 + 40 + 35 + 30 + 8 + 40 + 40 = 218)

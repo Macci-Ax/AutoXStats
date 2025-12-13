@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Calendar, Flag, ChevronRight } from 'lucide-react';
-import { MOCK_DRIVERS, MOCK_EVENTS } from '../constants';
-import { Championship } from '../types';
+import { MOCK_ENTRIES, MOCK_EVENTS } from '../constants';
+import { Championship, LeaderboardEntry } from '../types';
 
 interface HomeProps {
   onNavigate: (page: string) => void;
@@ -32,9 +32,9 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
 
   // Simple logic to get top driver per championship based on mock points
   const getTopDriver = (champ: Championship) => {
-    return MOCK_DRIVERS
-      .filter(d => d.championships.includes(champ))
-      .sort((a, b) => b.points - a.points)[0];
+    return MOCK_ENTRIES
+      .filter(e => e.championships && e.championships.includes(champ))
+      .sort((a, b) => b.stats.points - a.stats.points)[0]?.driver;
   };
 
   const prioritizedChamps = [Championship.DRCV, Championship.WACV, Championship.NWDAV, Championship.SWASV, Championship.DACM];
@@ -86,20 +86,20 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                   <span className="text-white font-bold text-lg">{randomClassData.className}</span>
                 </div>
                 <div className="grid grid-cols-1 gap-3">
-                  {randomClassData.drivers.map((driver, index) => (
-                    <div key={driver.id} className={`bg-slate-900/50 p-4 rounded-lg flex items-center gap-4 border ${index === 0 ? 'border-yellow-500/30 bg-yellow-900/10' : 'border-slate-700/50'} hover:border-red-500/50 transition cursor-pointer`} onClick={() => onNavigate('drivers')}>
+                  {randomClassData.drivers.map((entry: LeaderboardEntry, index) => (
+                    <div key={entry.driver.id} className={`bg-slate-900/50 p-4 rounded-lg flex items-center gap-4 border ${index === 0 ? 'border-yellow-500/30 bg-yellow-900/10' : 'border-slate-700/50'} hover:border-red-500/50 transition cursor-pointer`} onClick={() => onNavigate('drivers')}>
                       <div className="text-2xl font-black w-8 text-center" style={{ color: index === 0 ? '#fbbf24' : index === 1 ? '#94a3b8' : '#b45309' }}>
                         {index + 1}
                       </div>
                       <div className="bg-slate-800 h-10 w-10 rounded-full flex items-center justify-center text-xs font-bold text-slate-400 border border-slate-600 overflow-hidden shrink-0">
-                        <img src={driver.avatarUrl} alt={driver.name} className="w-full h-full object-cover" />
+                        <img src={entry.driver.avatarUrl} alt={entry.driver.name} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center mb-1">
-                          <h3 className="font-bold text-white truncate pr-2">{driver.name}</h3>
-                          <span className="text-xs bg-slate-700 px-2 py-0.5 rounded text-white font-mono whitespace-nowrap">{driver.points} Pkt</span>
+                          <h3 className="font-bold text-white truncate pr-2">{entry.driver.name}</h3>
+                          <span className="text-xs bg-slate-700 px-2 py-0.5 rounded text-white font-mono whitespace-nowrap">{entry.stats.points} Pkt</span>
                         </div>
-                        <p className="text-xs text-slate-400 truncate">{driver.team}</p>
+                        <p className="text-xs text-slate-400 truncate">{entry.team ? entry.team.name : ''}</p>
                       </div>
                     </div>
                   ))}
@@ -119,7 +119,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             </div>
             <div className="space-y-3">
               {recentEvents.map(event => {
-                const winner = MOCK_DRIVERS.find(d => d.id === event.winnerId);
+                const winnerEntry = MOCK_ENTRIES.find(e => e.driver.id === event.winnerId);
                 return (
                   <div key={event.id} className="flex items-center justify-between p-3 bg-slate-900/30 rounded border-l-4 border-slate-600 hover:bg-slate-900/50 transition">
                     <div>
@@ -127,10 +127,10 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                       <div className="font-semibold text-white">{event.name}</div>
                       <div className="text-xs text-slate-500">{event.location} • {new Date(event.date).toLocaleDateString('de-DE')}</div>
                     </div>
-                    {winner && (
+                    {winnerEntry && (
                       <div className="text-right">
                         <div className="text-xs text-slate-400 uppercase">Sieger</div>
-                        <div className="font-medium text-white">{winner.name}</div>
+                        <div className="font-medium text-white">{winnerEntry.driver.name}</div>
                       </div>
                     )}
                   </div>

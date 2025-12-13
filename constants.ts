@@ -1,121 +1,179 @@
-import { Championship, Driver, Event, Photo } from './types';
+import { Championship, Driver, Event, Photo, LeaderboardEntry } from './types';
 
 // Real Drivers from 2025 Data (Merged DRCV and Mock WACV for demo)
-export const MOCK_DRIVERS: Driver[] = [
+export const MOCK_ENTRIES: LeaderboardEntry[] = [
   // --- DRCV Langstrecke ---
   {
-    id: 'd_210',
-    name: 'René Bouma',
-    team: 'Digga Racing Team',
+    driver: {
+      id: 'd_210',
+      name: 'René Bouma',
+      avatarUrl: 'https://picsum.photos/200/200?random=210',
+      bio: 'Meisterschaftsführender Langstrecke 2025.'
+    },
+    team: { id: 't_digga', name: 'Digga Racing Team' },
     car: 'Spezialtourenwagen',
     number: 210,
     driverClass: 'Langstrecke',
     championships: [Championship.DRCV],
-    points: 218,
-    seasonRank: 1,
-    wins: 3,
-    heatWins: 0,
-    podiums: 5,
-    avatarUrl: 'https://picsum.photos/200/200?random=210',
-    bio: 'Meisterschaftsführender Langstrecke 2025.'
+    stats: {
+      points: 218,
+      seasonRank: 1,
+      wins: 3,
+      heatWins: 0,
+      podiums: 5,
+      secondPlaces: 0,
+      thirdPlaces: 2,
+      fourthPlaces: 0,
+      fifthPlaces: 0
+    }
   },
   {
-    id: 'd_1',
-    name: 'Tobias Hönicke',
-    team: 'Team Hönicke',
+    driver: {
+      id: 'd_1',
+      name: 'Tobias Hönicke',
+      avatarUrl: 'https://picsum.photos/200/200?random=1'
+    },
+    team: { id: 't_hoenicke', name: 'Team Hönicke' },
     car: 'Spezialtourenwagen',
     number: 1,
     driverClass: 'Langstrecke',
     championships: [Championship.DRCV],
-    points: 200,
-    seasonRank: 2,
-    wins: 2,
-    heatWins: 0,
-    podiums: 4,
-    avatarUrl: 'https://picsum.photos/200/200?random=1'
+    stats: {
+      points: 200,
+      seasonRank: 2,
+      wins: 2,
+      heatWins: 0,
+      podiums: 4,
+      secondPlaces: 1,
+      thirdPlaces: 1,
+      fourthPlaces: 0,
+      fifthPlaces: 0
+    }
   },
-  
+
   // --- DRCV Klasse 01 ---
   {
-    id: 'd_163',
-    name: 'Mike Hellweg',
-    team: 'Team Hellweg',
+    driver: {
+      id: 'd_163',
+      name: 'Mike Hellweg',
+      avatarUrl: 'https://picsum.photos/200/200?random=163'
+    },
+    team: { id: 't_hellweg', name: 'Team Hellweg' },
     car: 'Serientourenwagen bis 1400 ccm',
     number: 163,
     driverClass: 'Klasse 01',
     championships: [Championship.DRCV],
-    points: 69,
-    seasonRank: 1,
-    wins: 4,
-    heatWins: 18,
-    podiums: 5,
-    avatarUrl: 'https://picsum.photos/200/200?random=163'
+    stats: {
+      points: 69,
+      seasonRank: 1,
+      wins: 4,
+      heatWins: 18,
+      podiums: 5,
+      secondPlaces: 1,
+      thirdPlaces: 0,
+      fourthPlaces: 0,
+      fifthPlaces: 0
+    }
   },
 
   // --- DRCV Klasse 05 ---
   {
-    id: 'd_504',
-    name: 'Marc Schauseil',
-    team: 'Racing Team Velbert',
+    driver: {
+      id: 'd_504',
+      name: 'Marc Schauseil',
+      avatarUrl: 'https://picsum.photos/200/200?random=504'
+    },
+    team: { id: 't_velbert', name: 'Racing Team Velbert' },
     car: 'Supertourenwagen bis 1600 ccm (4WD)',
     number: 504,
     driverClass: 'Klasse 05',
     championships: [Championship.DRCV],
-    points: 86,
-    seasonRank: 1,
-    wins: 4,
-    heatWins: 21,
-    podiums: 5,
-    avatarUrl: 'https://picsum.photos/200/200?random=504'
+    stats: {
+      points: 86,
+      seasonRank: 1,
+      wins: 4,
+      heatWins: 21,
+      podiums: 5,
+      secondPlaces: 1,
+      thirdPlaces: 0,
+      fourthPlaces: 0,
+      fifthPlaces: 0
+    }
   },
 
   // --- WACV Sample Data (Since PDF data was mainly DRCV) ---
   {
-    id: 'w_101',
-    name: 'Jürgen Meyer',
-    team: 'JM Motorsport',
+    driver: {
+      id: 'w_101',
+      name: 'Jürgen Meyer',
+      avatarUrl: 'https://picsum.photos/200/200?random=901'
+    },
+    team: { id: 't_jm', name: 'JM Motorsport' },
     car: 'Golf 2 GTI',
     number: 101,
     driverClass: 'Klasse 1',
     championships: [Championship.WACV],
-    points: 145,
-    seasonRank: 1,
-    wins: 3,
-    heatWins: 12,
-    podiums: 6,
-    avatarUrl: 'https://picsum.photos/200/200?random=901'
+    stats: {
+      points: 145,
+      seasonRank: 1,
+      wins: 3,
+      heatWins: 12,
+      podiums: 6,
+      secondPlaces: 2,
+      thirdPlaces: 1,
+      fourthPlaces: 0,
+      fifthPlaces: 0
+    }
   },
   {
-    id: 'w_205',
-    name: 'Sarah Klein',
-    team: 'Klein Cross',
+    driver: {
+      id: 'w_205',
+      name: 'Sarah Klein',
+      avatarUrl: 'https://picsum.photos/200/200?random=902'
+    },
+    team: { id: 't_klein', name: 'Klein Cross' },
     car: 'Polo G40',
     number: 205,
     driverClass: 'Klasse 2',
     championships: [Championship.WACV],
-    points: 132,
-    seasonRank: 2,
-    wins: 1,
-    heatWins: 8,
-    podiums: 4,
-    avatarUrl: 'https://picsum.photos/200/200?random=902'
+    stats: {
+      points: 132,
+      seasonRank: 2,
+      wins: 1,
+      heatWins: 8,
+      podiums: 4,
+      secondPlaces: 2,
+      thirdPlaces: 1,
+      fourthPlaces: 0,
+      fifthPlaces: 0
+    }
   },
   {
-    id: 'w_800',
-    name: 'Peter Peters',
-    team: 'Peters Racing',
+    driver: {
+      id: 'w_800',
+      name: 'Peter Peters',
+      avatarUrl: 'https://picsum.photos/200/200?random=903'
+    },
+    team: { id: 't_peters', name: 'Peters Racing' },
     car: 'Spezialkreuzer',
     number: 800,
     driverClass: 'Spezialtourenwagen',
     championships: [Championship.WACV],
-    points: 180,
-    seasonRank: 1,
-    wins: 5,
-    heatWins: 15,
-    podiums: 7,
-    avatarUrl: 'https://picsum.photos/200/200?random=903'
+    stats: {
+      points: 180,
+      seasonRank: 1,
+      wins: 5,
+      heatWins: 15,
+      podiums: 7,
+      secondPlaces: 2,
+      thirdPlaces: 0,
+      fourthPlaces: 0,
+      fifthPlaces: 0
+    }
   }
 ];
+
+export const MOCK_DRIVERS = MOCK_ENTRIES.map(e => e.driver); // Backward compatibility helper if needed, but we should use MOCK_ENTRIES
 
 // Real Events 2025
 export const MOCK_EVENTS: Event[] = [

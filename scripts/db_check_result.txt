@@ -1,0 +1,42 @@
+=== race_results schema ===
+  id (TEXT)
+  event_id (TEXT)
+  driver_id (TEXT)
+  class_id (TEXT)
+  rank (INTEGER)
+  points (INTEGER)
+  laps (INTEGER)
+  total_time (TEXT)
+  heat_wins (INTEGER)
+  start_number (INTEGER)
+  car (TEXT)
+  reconstructed (BOOLEAN)
+
+Has license_type: false
+Has championship_points: false
+
+=== Total race_results count ===
+Count: 2421
+
+=== Events ===
+  e1 | DRCV | Dauborn | 2025-05-18 | COMPLETED
+  e2 | DRCV | Gleidorf | 2025-06-22 | COMPLETED
+  e4 | DRCV | Herbern | 2025-08-17 | COMPLETED
+  e5 | DRCV | Osnabrück | 2025-09-07 | COMPLETED
+  e6 | DRCV | Saisonfinale Itterbeck | 2025-09-28 | UPCOMING
+  e7 | DRCV | Itterbeck Lauf 1 | 2025-04-27 | COMPLETED
+  w_ev_1 | WACV | AC Waldorf | 2025-01-01 | COMPLETED
+  w_ev_2 | WACV | MSC Extertal | 2025-01-01 | COMPLETED
+  w_ev_3 | WACV | RSC Düdinghausen | 2025-01-01 | COMPLETED
+  w_ev_4 | WACV | RSG Aartal Eppe | 2025-01-01 | COMPLETED
+  w_ev_5 | WACV | MSC Linsburg | 2025-01-01 | COMPLETED
+  w_ev_6 | WACV | MSF Lichtenau | 2025-01-01 | COMPLETED
+  w_ev_7 | WACV | RT Oberschledorn | 2025-01-01 | COMPLETED
+  w_ev_8 | WACV | MSC Crazy Horses | 2025-01-01 | COMPLETED
+  w_ev_9 | WACV | MSC Hesborn | 2025-01-01 | COMPLETED
+  evt_41a29d68 | DRCV | Eppe 13.07.2025 | 2025-07-13 | COMPLETED
+  evt_4f2f9512 | DRCV | Extertal 01.06.2025 | 2025-06-01 | COMPLETED
+  evt_a14390a4 | DRCV | Hoope 24.05.2025 | 2025-05-24 | COMPLETED
+  evt_35fa35fe | DRCV | Löhne 10.08.2025 | 2025-08-10 | COMPLETED
+  evt_7e47e138 | DRCV | Vellern 24.08.2025 | 2025-08-24 | COMPLETED
+  evt_sachsenberg_2025_rec | DRCV | Sachsenberg (Reconstructed) | null | reconstructed

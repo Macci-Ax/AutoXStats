@@ -1,0 +1,57 @@
+
+=== PAGE 1 ===
+Dauborn - 18.05.2025
+Langstrecke
+Serien- und Spezialtourenwagen Stand: 18.05.2025
+Pl. Startnr Teamname Fahrer Lizenz Verein Z. Runden GP / Zeit
+0001 DRCV Team Hönicke Tobias Hönicke 38414 MSC Autocross CLP e.V. J 101 40
+1. Christian Alfers 54580 MSC Autocross CLP e.V.
+15434846 Tobias Behlert 29541 ACC Oldenburg e.V. 19,601
+0371 TL Froese Motorsport Dennis Froese 55091 J 100 35
+2.
+14384040 19,424
+
+--- Table 1 Header ---
+['Pl.', 'Startnr', '', 'Teamname', 'Fahrer', 'Lizenz', 'Verein', 'Z.', 'Runden', 'GP / Zeit']
+--- First 3 data rows ---
+['1.', '0001\n15434846', 'DRCV', 'Team Hönicke', 'Tobias Hönicke\nChristian Alfers\nTobias Behlert', '38414\n54580\n29541', 'MSC Autocross CLP e.V.\nMSC Autocross CLP e.V.\nACC Oldenburg e.V.', 'J', '101', '40\n19,601']
+['2.', '0371\n14384040', 'TL', 'Froese Motorsport', 'Dennis Froese', '55091', '', 'J', '100', '35\n19,424']
+['3.', '0512\n11482892', 'DRCV', 'Racing Team Noldes', 'Christian Noldes\nStefan Kiepe\nMarc Schauseil', '33094\n33116\n40989', 'RG Ahlen e.V.\nACT Dauborn e.V.\nRG Ahlen e.V.', 'J', '100', '30\n20,15']
+
+=== PAGE 2 ===
+Dauborn - 18.05.2025
+Langstrecke
+Serien- und Spezialtourenwagen Stand: 18.05.2025
+Pl. Startnr Teamname Fahrer Lizenz Verein Z. Runden GP / Zeit
+0223 TL Black Orange Racing Team Jonas Mohr RC54641 J 90 11
+15.
+16559365 23,082
+0810 DRCV Autocross Team Breuer Anna-Lena Brannekämper 49341 MSC Herbern e.V. J 87 10
+16. Tim Breuer 26420 RCC Hamm e.V.
+3492154 21,659
+
+--- Table 1 Header ---
+['Pl.', 'Startnr', '', 'Teamname', 'Fahrer', 'Lizenz', 'Verein', 'Z.', 'Runden', 'GP / Zeit']
+--- First 3 data rows ---
+['15.', '0223\n16559365', 'TL', 'Black Orange Racing Team', 'Jonas Mohr', 'RC54641', '', 'J', '90', '11\n23,082']
+['16.', '0810\n3492154', 'DRCV', 'Autocross Team Breuer', 'Anna-Lena Brannekämper\nTim Breuer', '49341\n26420', 'MSC Herbern e.V.\nRCC Hamm e.V.', 'J', '87', '10\n21,659']
+['17.', '0614\n11482372', 'DRCV', 'Racing-Team-Schnathorst', 'Jan Wittkowski\nJustin Heckert', '49977\n42720', 'MSC Löhne e.V.\nMSC Löhne e.V.', 'J', '86', '9\n23,43']
+
+=== PAGE 3 ===
+Dauborn - 18.05.2025
+Klasse 01
+Serientourenwagen bis 1400 cm³ Stand: 18.05.2025
+Pl. Startnr Teamname Fahrer Lizenz Verein 1 2 3 4 GP / Zeit
+163 DRCV Team Hellweg Mike Hellweg 30629 AC Vellern e.V. 9 9 7 0 25
+1. Luca Hellweg 44219 AC Vellern e.V.
+2432689 Patrick Kleigrewe 31618 AC Vellern e.V. 20,957
+189 DRCV R+M Racing Kai Schlangen 33368 ARCC Werlte e.V. 7 5 9 0 21
+2. Claas Schlangen 45341 ARCC Werlte e.V.
+11304242 21,522
+
+--- Table 1 Header ---
+['Pl.', 'Startnr', '', 'Teamname', 'Fahrer', 'Lizenz', 'Verein', '1', '2', '3', '4', 'GP / Zeit']
+--- First 3 data rows ---
+['1.', '163\n2432689', 'DRCV', 'Team Hellweg', 'Mike Hellweg\nLuca Hellweg\nPatrick Kleigrewe', '30629\n44219\n31618', 'AC Vellern e.V.\nAC Vellern e.V.\nAC Vellern e.V.', '9', '9', '7', '0', '25\n20,957']
+['2.', '189\n11304242', 'DRCV', 'R+M Racing', 'Kai Schlangen\nClaas Schlangen', '33368\n45341', 'ARCC Werlte e.V.\nARCC Werlte e.V.', '7', '5', '9', '0', '21\n21,522']
+['3.', '128\n11880053', 'DRCV', 'KURT Kuhn Racing Team', 'Marvin Kuhn\nEmmo Kuhn', '44959\n40951', '', '6', '7', '6', '0', '19\n21,542']

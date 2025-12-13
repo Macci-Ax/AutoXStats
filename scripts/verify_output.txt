@@ -1,0 +1,22 @@
+=== race_results count ===
+Total: 1687
+
+=== license_type distribution ===
+  DRCV: 1687
+
+=== TL drivers sample ===
+  No TL drivers found
+
+=== Events imported ===
+  evt_4f47f78b: Itterbeck 27.04.2025 (2025-04-27)
+  e3: WACV Lauf 1 - Waldorf (2025-05-04)
+  e1: Dauborn (2025-05-18)
+  evt_da9d456b: Hoope 24.05.2025 (2025-05-24)
+  evt_8b69eea8: Extertal 01.06.2025 (2025-06-01)
+  e2: Gleidorf (2025-06-22)
+  evt_c71a28b8: Eppe 13.07.2025 (2025-07-13)
+  evt_2285caff: Löhne 10.08.2025 (2025-08-10)
+  e4: Herbern (2025-08-17)
+  evt_e7cfd609: Vellern 24.08.2025 (2025-08-24)
+  e5: Osnabrück (2025-09-07)
+  e6: Saisonfinale Itterbeck (2025-09-28)

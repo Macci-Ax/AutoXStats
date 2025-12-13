@@ -158,6 +158,10 @@ def process_pdf(pdf_path):
                         elif 'runden' in c: col_map['laps'] = idx
                         elif c in ['1', '2', '3', '4']: heat_cols.append(idx)
                     
+                    # License type column is typically column 2 (unnamed, between Startnr and Teamname)
+                    # It contains 'DRCV' or 'TL'
+                    col_map['license_type'] = 2
+                    
                     if 'rank' not in col_map or 'driver' not in col_map: 
                         continue
 
@@ -181,6 +185,17 @@ def process_pdf(pdf_path):
                            try:
                                nr = int(row[col_map['nr']].split('\n')[0])
                            except: pass
+                        
+                        # Extract license type (DRCV or TL) from column 2
+                        license_type = 'DRCV'  # Default
+                        if 'license_type' in col_map and col_map['license_type'] < len(row):
+                            lic_raw = row[col_map['license_type']]
+                            if lic_raw:
+                                lic_raw = lic_raw.strip().upper()
+                                if lic_raw == 'TL':
+                                    license_type = 'TL'
+                                elif lic_raw == 'DRCV':
+                                    license_type = 'DRCV'
                            
                         # Calculate points based on Rank
                         # Standard (Classes): 1->9, 2->7, 3->6... 8->1
@@ -251,9 +266,9 @@ def process_pdf(pdf_path):
                         # We must update init_db.py schema for race_results to include heat_wins (done in previous step)
                         
                         cursor.execute("""
-                            INSERT OR REPLACE INTO race_results (id, event_id, driver_id, class_id, rank, points, laps, total_time, heat_wins)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (res_id, event_id, drv_id, current_class_id, rank, points, laps, total_time, heat_wins))
+                            INSERT OR REPLACE INTO race_results (id, event_id, driver_id, class_id, rank, points, laps, total_time, heat_wins, start_number, license_type)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (res_id, event_id, drv_id, current_class_id, rank, points, laps, total_time, heat_wins, nr, license_type))
                 
                 except Exception as e:
                     # print(f"    Error parsing row: {e}")
