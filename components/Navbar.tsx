@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, X, Trophy, Calendar, Users, Image, User, LogIn } from 'lucide-react';
+import { Menu, X, Trophy, Calendar, Users, Image, User, LogIn, Settings } from 'lucide-react';
 
 interface NavbarProps {
   currentPage: string;
@@ -16,6 +16,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, user, o
     { id: 'events', label: 'Events', icon: Calendar },
     { id: 'drivers', label: 'Fahrer', icon: Users },
     { id: 'gallery', label: 'Galerie', icon: Image },
+    { id: 'admin', label: 'Editor', icon: Settings },
   ];
 
   const handleNav = (id: string) => {
@@ -32,7 +33,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, user, o
             <span className="text-2xl font-bold text-white tracking-tighter ml-1">Stats</span>
             <span className="text-xs font-mono text-slate-400 ml-2 border border-slate-700 px-1 rounded">DACH</span>
           </div>
-          
+
           {/* Desktop Menu */}
           <div className="hidden md:block">
             <div className="ml-10 flex items-baseline space-x-4">
@@ -40,11 +41,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, user, o
                 <button
                   key={item.id}
                   onClick={() => handleNav(item.id)}
-                  className={`px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors ${
-                    currentPage === item.id
-                      ? 'bg-red-600 text-white'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                  }`}
+                  className={`px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors ${currentPage === item.id
+                    ? 'bg-red-600 text-white'
+                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                    }`}
                 >
                   <item.icon size={16} />
                   {item.label}
@@ -54,19 +54,19 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, user, o
           </div>
 
           <div className="hidden md:block">
-             {user ? (
-               <button onClick={() => handleNav('profile')} className="flex items-center gap-2 text-slate-300 hover:text-white">
-                 <img src={user.avatarUrl || 'https://picsum.photos/40/40'} alt="Avatar" className="w-8 h-8 rounded-full border border-slate-600"/>
-                 <span className="text-sm font-medium">{user.name}</span>
-               </button>
-             ) : (
-                <button 
-                  onClick={onLoginClick}
-                  className="flex items-center gap-2 text-sm font-medium text-red-500 hover:text-red-400 px-3 py-2 border border-red-500/30 rounded-md hover:bg-red-500/10 transition-all"
-                >
-                  <LogIn size={16} /> Login
-                </button>
-             )}
+            {user ? (
+              <button onClick={() => handleNav('profile')} className="flex items-center gap-2 text-slate-300 hover:text-white">
+                <img src={user.avatarUrl || 'https://picsum.photos/40/40'} alt="Avatar" className="w-8 h-8 rounded-full border border-slate-600" />
+                <span className="text-sm font-medium">{user.name}</span>
+              </button>
+            ) : (
+              <button
+                onClick={onLoginClick}
+                className="flex items-center gap-2 text-sm font-medium text-red-500 hover:text-red-400 px-3 py-2 border border-red-500/30 rounded-md hover:bg-red-500/10 transition-all"
+              >
+                <LogIn size={16} /> Login
+              </button>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -89,26 +89,25 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, user, o
               <button
                 key={item.id}
                 onClick={() => handleNav(item.id)}
-                className={`w-full text-left px-3 py-2 rounded-md text-base font-medium flex items-center gap-3 ${
-                  currentPage === item.id
-                    ? 'bg-red-600 text-white'
-                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-                }`}
+                className={`w-full text-left px-3 py-2 rounded-md text-base font-medium flex items-center gap-3 ${currentPage === item.id
+                  ? 'bg-red-600 text-white'
+                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
               >
                 <item.icon size={18} />
                 {item.label}
               </button>
             ))}
             <div className="border-t border-slate-800 mt-4 pt-4">
-               {user ? (
-                  <button onClick={() => handleNav('profile')} className="w-full text-left px-3 py-2 text-slate-300 hover:bg-slate-800 rounded-md flex items-center gap-3">
-                    <User size={18} /> Profil: {user.name}
-                  </button>
-               ) : (
-                 <button onClick={() => {onLoginClick(); setIsOpen(false);}} className="w-full text-left px-3 py-2 text-red-500 hover:bg-slate-800 rounded-md flex items-center gap-3">
-                   <LogIn size={18} /> Anmelden / Registrieren
-                 </button>
-               )}
+              {user ? (
+                <button onClick={() => handleNav('profile')} className="w-full text-left px-3 py-2 text-slate-300 hover:bg-slate-800 rounded-md flex items-center gap-3">
+                  <User size={18} /> Profil: {user.name}
+                </button>
+              ) : (
+                <button onClick={() => { onLoginClick(); setIsOpen(false); }} className="w-full text-left px-3 py-2 text-red-500 hover:bg-slate-800 rounded-md flex items-center gap-3">
+                  <LogIn size={18} /> Anmelden / Registrieren
+                </button>
+              )}
             </div>
           </div>
         </div>

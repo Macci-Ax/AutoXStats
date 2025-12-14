@@ -10,7 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 // Helper to get DB connection (using callback-based sqlite3 for simplicity in standard node usage with 'sqlite3' package)
-const db = new sqlite3.Database(DB_PATH, sqlite3.OPEN_READONLY, (err) => {
+const db = new sqlite3.Database(DB_PATH, sqlite3.OPEN_READWRITE, (err) => {
     if (err) {
         console.error("Error opening database:", err.message);
     } else {
@@ -249,6 +249,133 @@ app.get('/api/events', (req, res) => {
             return;
         }
         res.json(rows);
+    });
+});
+
+// GET /api/classes
+// Returns all classes available in the system
+app.get('/api/classes', (req, res) => {
+    const query = "SELECT * FROM classes ORDER BY name";
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            res.status(400).json({ error: err.message });
+            return;
+        }
+        res.json(rows);
+    });
+});
+
+// GET /api/race-results
+// Returns results for a specific event and class
+// Query params: ?event_id=...&class_id=...
+app.get('/api/race-results', (req, res) => {
+    const { event_id, class_id } = req.query;
+
+    if (!event_id || !class_id) {
+        return res.status(400).json({ error: "Missing required query params: event_id, class_id" });
+    }
+
+    const query = `
+        SELECT 
+            rr.id, 
+            d.name as driver_name, 
+            COALESCE(rr.start_number, d.start_number) as start_number, 
+            COALESCE(rr.car, d.car) as car,
+            rr.rank, 
+            rr.points, 
+            rr.championship_points 
+        FROM race_results rr
+        JOIN drivers d ON rr.driver_id = d.id
+        WHERE rr.event_id = ? AND rr.class_id = ?
+        ORDER BY rr.rank
+    `;
+
+    db.all(query, [event_id, class_id], (err, rows) => {
+        if (err) {
+            res.status(400).json({ error: err.message });
+            return;
+        }
+        res.json(rows);
+    });
+});
+
+// GET /api/admin/all-drivers
+// Returns simple list of all drivers for the dropdown
+app.get('/api/admin/all-drivers', (req, res) => {
+    const query = "SELECT id, name FROM drivers ORDER BY name";
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            res.status(400).json({ error: err.message });
+            return;
+        }
+        res.json(rows);
+    });
+});
+
+// GET /api/admin/driver-results
+// Returns all results for a specific driver (for admin editing)
+app.get('/api/admin/driver-results', (req, res) => {
+    const { driver_id } = req.query;
+    if (!driver_id) return res.status(400).json({ error: "Missing driver_id" });
+
+    const query = `
+        SELECT 
+            rr.id,
+            rr.class_id,
+            e.name as event_name,
+            e.date as event_date,
+            c.name as class_name,
+            COALESCE(rr.start_number, d.start_number) as start_number,
+            COALESCE(rr.car, d.car) as car,
+            rr.rank,
+            rr.points,
+            rr.championship_points,
+            d.name as driver_name
+        FROM race_results rr
+        JOIN events e ON rr.event_id = e.id
+        JOIN classes c ON rr.class_id = c.id
+        JOIN drivers d ON rr.driver_id = d.id
+        WHERE rr.driver_id = ?
+        ORDER BY e.date DESC
+    `;
+
+    db.all(query, [driver_id], (err, rows) => {
+        if (err) {
+            res.status(400).json({ error: err.message });
+            return;
+        }
+        res.json(rows);
+    });
+});
+
+// PUT /api/results/:id
+// Update a specific race result (Rank, Points, Championship Points, Car, and StartNr)
+app.put('/api/results/:id', (req, res) => {
+    const resultId = req.params.id;
+    const { rank, points, championship_points, car, start_number } = req.body;
+
+    // Validate inputs (basic)
+    if (rank === undefined || points === undefined || championship_points === undefined) {
+        return res.status(400).json({ error: "Missing required fields: rank, points, championship_points" });
+    }
+
+    const query = `
+        UPDATE race_results 
+        SET rank = ?, points = ?, championship_points = ?, car = ?, start_number = ?
+        WHERE id = ?
+    `;
+
+    db.run(query, [rank, points, championship_points, car, start_number, resultId], function (err) {
+        if (err) {
+            console.error("Error updating result:", err.message);
+            res.status(400).json({ error: err.message });
+            return;
+        }
+        if (this.changes === 0) {
+            res.status(404).json({ error: "Result not found" });
+            return;
+        }
+        res.json({ message: "Result updated successfully", changes: this.changes });
     });
 });
 

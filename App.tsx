@@ -5,6 +5,7 @@ import { Drivers } from './pages/Drivers';
 import { Events } from './pages/Events';
 import { Gallery } from './pages/Gallery';
 import { Profile } from './pages/Profile';
+import AdminResults from './pages/AdminResults';
 import { ChatAssistant } from './components/ChatAssistant';
 import { User } from './types';
 
@@ -52,6 +53,7 @@ const App: React.FC = () => {
       case 'drivers': return <Drivers />;
       case 'events': return <Events />;
       case 'gallery': return <Gallery user={user} />;
+      case 'admin': return <AdminResults />;
       case 'profile': return user ? <Profile user={user} driverData={MOCK_DRIVERS.find(d => d.id === user.driverId)} onLogout={() => { setUser(null); setPage('home'); }} onUpdate={setUser} /> : <Home onNavigate={setPage} />;
       default: return <Home onNavigate={setPage} />;
     }

@@ -154,6 +154,7 @@ def process_pdf(pdf_path):
                         elif 'startnr' in c: col_map['nr'] = idx
                         elif 'fahrer' in c: col_map['driver'] = idx
                         elif 'team' in c: col_map['team'] = idx
+                        elif 'fahrzeug' in c or 'marke' in c: col_map['car'] = idx
                         elif 'gp' in c: col_map['points'] = idx
                         elif 'runden' in c: col_map['laps'] = idx
                         elif c in ['1', '2', '3', '4']: heat_cols.append(idx)
@@ -180,6 +181,10 @@ def process_pdf(pdf_path):
                         if 'team' in col_map and row[col_map['team']]:
                             team = row[col_map['team']].replace('\n', ' ')
 
+                        car_model = None
+                        if 'car' in col_map and row[col_map['car']]:
+                             car_model = row[col_map['car']].replace('\n', ' ').strip()
+                        
                         nr = 0
                         if 'nr' in col_map and row[col_map['nr']]:
                            try:
@@ -250,8 +255,10 @@ def process_pdf(pdf_path):
                                     if h_pts >= 9: heat_wins += 1
                                 except: pass
                         
-                        # Store Driver
-                        drv_id = find_or_create_driver(cursor, driver_name, team, None, nr, current_class_id)
+                        # Store Driver (pass car_model too?)
+                        # find_or_create_driver(cursor, name, team, car, start_number, class_id)
+                        # The original function signature: def find_or_create_driver(cursor, name, team, car, start_number, class_id):
+                        drv_id = find_or_create_driver(cursor, driver_name, team, car_model, nr, current_class_id)
                         
                         # Ensure participation record exists
                         cursor.execute("""
@@ -262,13 +269,12 @@ def process_pdf(pdf_path):
                         # Store Result (Result ID unique per driver per event PER CLASS)
                         res_id = f"res_{event_id}_{drv_id}_{current_class_id}"
                         
-                        # Upsert Result including heat wins (NOW adding heat_wins to race_results schema!)
-                        # We must update init_db.py schema for race_results to include heat_wins (done in previous step)
+                        # Upsert Result including heat wins AND CAR AND START_NUMBER
                         
                         cursor.execute("""
-                            INSERT OR REPLACE INTO race_results (id, event_id, driver_id, class_id, rank, points, laps, total_time, heat_wins, start_number, license_type)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """, (res_id, event_id, drv_id, current_class_id, rank, points, laps, total_time, heat_wins, nr, license_type))
+                            INSERT OR REPLACE INTO race_results (id, event_id, driver_id, class_id, rank, points, laps, total_time, heat_wins, start_number, license_type, car)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (res_id, event_id, drv_id, current_class_id, rank, points, laps, total_time, heat_wins, nr, license_type, car_model))
                 
                 except Exception as e:
                     # print(f"    Error parsing row: {e}")

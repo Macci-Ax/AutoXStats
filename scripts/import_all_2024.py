@@ -4,21 +4,20 @@ import glob
 import os
 
 # Find all 2024 PDFs
-pdfs = glob.glob('pdf/*2024*.pdf')
+pdfs = glob.glob(os.path.join('pdf', '2024', '*.pdf'))
 print(f"Found {len(pdfs)} PDF files for 2024:")
 for pdf in pdfs:
     print(f"  {pdf}")
 
 print("\nStarting import...")
 
-# Run import_results.py for each PDF
-for pdf in pdfs:
-    print(f"\n=== Importing {pdf} ===")
-    result = subprocess.run(['python', 'scripts/import_results.py', pdf], 
-                          capture_output=True, text=True, cwd='.')
-    print(result.stdout)
-    if result.stderr:
-        print(f"ERRORS: {result.stderr}")
+# Run import_results.py for the directory
+print(f"\n=== Importing 2024 PDFs from pdf/2024 ===")
+result = subprocess.run(['python', 'scripts/import_results.py', os.path.join('pdf', '2024')], 
+                      capture_output=True, text=True, cwd='.')
+print(result.stdout)
+if result.stderr:
+    print(f"ERRORS: {result.stderr}")
 
 print("\n=== Import Complete ===")
 

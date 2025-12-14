@@ -11,6 +11,7 @@ export interface Driver {
   originalId?: string; // Real DB ID if 'id' is composite
   name: string;
   verified?: boolean;
+  points?: number; // Calculated total points
   avatarUrl?: string;
   socials?: {
     instagram?: string;
