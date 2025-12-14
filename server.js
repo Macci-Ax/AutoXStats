@@ -22,21 +22,36 @@ app.get('/', (req, res) => {
     res.send('AutoXStats API Server is running. Access endpoints at /api/drivers or /api/events');
 });
 
+// GET /api/years
+// Returns all years for which data exists, sorted descending
+app.get('/api/years', (req, res) => {
+    const query = `
+        SELECT DISTINCT strftime('%Y', e.date) as year
+        FROM events e
+        JOIN race_results rr ON e.id = rr.event_id
+        WHERE e.date IS NOT NULL
+        ORDER BY year DESC
+    `;
+
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            console.error("Database Error (Years):", err.message);
+            res.status(400).json({ error: err.message });
+            return;
+        }
+        const years = rows.map(r => parseInt(r.year)).filter(y => !isNaN(y));
+        res.json(years);
+    });
+});
+
 // GET /api/drivers
 // Returns all drivers with calculated total stats
+// Query params: ?year=YYYY (optional, defaults to current year)
 app.get('/api/drivers', (req, res) => {
-    // We already have accumulated points in the 'drivers' table from initialization,
-    // but the real source of truth for race logic is race_results.
-    // However, our init script did update the drivers table roughly? 
-    // Actually, init_db.py creates drivers with seed data but didn't update them from the PDF results.
-    // The PDF importer inserted into `race_results`.
-    // So we should aggregate from race_results to get "current" stats?
-    // OR we can just join race_results.
+    // Use query parameter year or default to current year
+    const year = req.query.year || String(new Date().getFullYear());
 
-    // Current season year
-    const currentYear = new Date().getFullYear();
-
-    // Aggregation Query - filter by current year
+    // Aggregation Query - filter by selected year
     const query = `
         SELECT 
             d.id as driver_id,
@@ -74,7 +89,7 @@ app.get('/api/drivers', (req, res) => {
         ORDER BY driverClass, COALESCE(SUM(r.championship_points), dp.points) DESC
     `;
 
-    db.all(query, [String(currentYear)], (err, rows) => {
+    db.all(query, [year], (err, rows) => {
         if (err) {
             console.error("Database Error:", err.message);
             res.status(400).json({ error: err.message });
@@ -218,8 +233,9 @@ app.get('/api/drivers/:id/results', (req, res) => {
 });
 
 // GET /api/events
+// Query params: ?year=YYYY (optional, defaults to current year)
 app.get('/api/events', (req, res) => {
-    const currentYear = new Date().getFullYear();
+    const year = req.query.year || String(new Date().getFullYear());
     const query = `
         SELECT e.id, e.championship_id as championship, e.name, e.date, e.location, e.status
         FROM events e
@@ -227,7 +243,7 @@ app.get('/api/events', (req, res) => {
         ORDER BY e.date
     `;
 
-    db.all(query, [String(currentYear)], (err, rows) => {
+    db.all(query, [year], (err, rows) => {
         if (err) {
             res.status(400).json({ error: err.message });
             return;

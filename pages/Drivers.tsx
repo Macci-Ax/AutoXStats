@@ -25,6 +25,24 @@ export const Drivers: React.FC = () => {
   const [showAllRaces, setShowAllRaces] = useState(false);
   const detailViewRef = useRef<HTMLDivElement>(null);
 
+  // Year selection state
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+
+  // Fetch available years on mount
+  useEffect(() => {
+    fetch('http://localhost:3000/api/years')
+      .then(res => res.json())
+      .then(years => {
+        if (Array.isArray(years) && years.length > 0) {
+          setAvailableYears(years);
+          // Default to most recent year
+          setSelectedYear(years[0]);
+        }
+      })
+      .catch(err => console.error("Failed to fetch years:", err));
+  }, []);
+
   // Scroll to detail view on mobile when a driver is selected
   useEffect(() => {
     if (selectedEntry && detailViewRef.current && window.innerWidth < 1024) {
@@ -41,12 +59,13 @@ export const Drivers: React.FC = () => {
     }));
   };
 
+  // Fetch drivers with selected year
   useEffect(() => {
-    fetch('http://localhost:3000/api/drivers')
+    fetch(`http://localhost:3000/api/drivers?year=${selectedYear}`)
       .then(res => res.json())
       .then(data => setEntries(data))
       .catch(err => console.error("Failed to fetch drivers:", err));
-  }, []);
+  }, [selectedYear]);
 
   useEffect(() => {
     if (selectedEntry) {
@@ -427,7 +446,18 @@ export const Drivers: React.FC = () => {
           </button>
           <div>
             <h1 className="text-3xl font-bold text-white">{activeChampionship} Fahrerdatenbank</h1>
-            <p className="text-slate-400 text-sm">Saison 2025</p>
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400 text-sm">Saison</span>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="bg-slate-800 border border-slate-600 text-white rounded px-2 py-1 text-sm focus:outline-none focus:border-red-500 cursor-pointer"
+              >
+                {availableYears.map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 

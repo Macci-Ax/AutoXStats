@@ -279,8 +279,10 @@ def process_pdf(pdf_path):
     print(f"Finished {os.path.basename(pdf_path)}")
 
 def main():
-    # Only run if PDF dir exists
-    pdf_dir = os.path.join('pdf', '2025')
+    import sys
+    # Use command line argument or default to pdf/2025
+    pdf_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join('pdf', '2025')
+    
     if os.path.exists(pdf_dir):
         print(f"Scanning {pdf_dir}...")
         for f in os.listdir(pdf_dir):
@@ -291,3 +293,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
