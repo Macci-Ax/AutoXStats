@@ -5,6 +5,9 @@ import Parser from 'rss-parser';
 import session from 'express-session';
 import bcrypt from 'bcrypt';
 import cookieParser from 'cookie-parser';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 
 const app = express();
 const PORT = 3000;
@@ -33,7 +36,28 @@ const requireAdmin = (req, res, next) => {
         return next();
     }
     return res.status(403).json({ error: "Access denied. Admin privileges required." });
+    return res.status(403).json({ error: "Access denied. Admin privileges required." });
 };
+
+// Configure Multer for File Uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const uploadDir = './uploads';
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir);
+        }
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({ storage: storage });
+
+// Serve Static Files (Uploads)
+app.use('/uploads', express.static('uploads'));
 
 // Auth Endpoints
 
@@ -657,6 +681,113 @@ app.get('/api/youtube-feed', async (req, res) => {
             }
         ]);
     }
+});
+
+// POST /api/photos
+// Upload new photos (supports multiple)
+app.post('/api/photos', upload.array('photos'), (req, res) => {
+    if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ error: "No files uploaded" });
+    }
+
+    const { eventId, photographer } = req.body;
+    const finalPhotographer = photographer || 'Unknown';
+    const uploadedPhotos = [];
+
+    // Prepare insert statement
+    const stmt = db.prepare(`
+        INSERT INTO photos (id, event_id, storage_path, photographer, created_at)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `);
+
+    // Process each file
+    const errors = [];
+    req.files.forEach(file => {
+        const fileUrl = `/uploads/${file.filename}`;
+        const photoId = 'p_' + Date.now() + '_' + Math.round(Math.random() * 1000); // Unique ID
+
+        try {
+            stmt.run([photoId, eventId || 'e_general', fileUrl, finalPhotographer]);
+            uploadedPhotos.push({
+                id: photoId,
+                url: fileUrl,
+                eventId: eventId,
+                photographer: finalPhotographer,
+                uploadDate: new Date().toISOString()
+            });
+        } catch (err) {
+            console.error("Error saving photo:", err.message);
+            errors.push(err.message);
+        }
+    });
+
+    stmt.finalize();
+
+    if (uploadedPhotos.length === 0 && errors.length > 0) {
+        return res.status(500).json({ error: "Failed to save photos", details: errors });
+    }
+
+    res.json({
+        message: `${uploadedPhotos.length} photos uploaded successfully`,
+        photos: uploadedPhotos,
+        errors: errors.length > 0 ? errors : undefined
+    });
+});
+
+// GET /api/gallery/events
+// Returns events that have photos, with count and latest photo as cover
+app.get('/api/gallery/events', (req, res) => {
+    const query = `
+        SELECT 
+            e.id, 
+            e.name, 
+            e.date, 
+            COUNT(p.id) as photo_count,
+            (SELECT storage_path FROM photos p2 WHERE p2.event_id = e.id ORDER BY p2.created_at DESC LIMIT 1) as cover_url
+        FROM events e
+        JOIN photos p ON e.id = p.event_id
+        GROUP BY e.id
+        ORDER BY e.date DESC
+    `;
+
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            console.error("Error fetching gallery events:", err.message);
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(rows);
+    });
+});
+
+// GET /api/photos
+app.get('/api/photos', (req, res) => {
+    const { eventId } = req.query;
+    let query = `SELECT * FROM photos`;
+    const params = [];
+
+    if (eventId) {
+        query += ` WHERE event_id = ?`;
+        params.push(eventId);
+    }
+
+    query += ` ORDER BY created_at DESC`;
+
+    db.all(query, params, (err, rows) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        // Map to frontend expectation
+        const photos = rows.map(r => ({
+            id: r.id,
+            url: r.storage_path, // Mapping 'storage_path' to 'url'
+            eventId: r.event_id,
+            photographer: r.photographer || 'Gast',
+            uploadDate: r.created_at,
+            highResAvailable: true // Default true for local uploads
+        }));
+        res.json(photos);
+    });
 });
 
 app.listen(PORT, () => {
