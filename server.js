@@ -2,13 +2,92 @@ import express from 'express';
 import cors from 'cors';
 import sqlite3 from 'sqlite3';
 import Parser from 'rss-parser';
+import session from 'express-session';
+import bcrypt from 'bcrypt';
+import cookieParser from 'cookie-parser';
 
 const app = express();
 const PORT = 3000;
 const DB_PATH = './autox.db';
 
 app.use(cors());
+app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
+
+// Session Configuration
+app.use(session({
+    secret: 'autoxstats_secret_key_change_in_prod', // INSECURE: Move to env var in prod
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: false, // Set to true if using HTTPS
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
+
+// Middleware: Require Admin
+const requireAdmin = (req, res, next) => {
+    if (req.session && req.session.user && req.session.user.role === 'ADMIN') {
+        return next();
+    }
+    return res.status(403).json({ error: "Access denied. Admin privileges required." });
+};
+
+// Auth Endpoints
+
+// POST /api/auth/login
+app.post('/api/auth/login', (req, res) => {
+    const { email, password } = req.body;
+
+    // Simple validation
+    if (!email || !password) {
+        return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    db.get("SELECT * FROM users WHERE email = ?", [email], async (err, user) => {
+        if (err) {
+            return res.status(500).json({ error: "Database error" });
+        }
+        if (!user) {
+            return res.status(401).json({ error: "Invalid email or password" });
+        }
+
+        const match = await bcrypt.compare(password, user.password_hash);
+        if (match) {
+            // Create session
+            req.session.user = {
+                id: user.id,
+                email: user.email,
+                role: user.role
+            };
+            res.json({ message: "Login successful", user: req.session.user });
+        } else {
+            res.status(401).json({ error: "Invalid email or password" });
+        }
+    });
+});
+
+// POST /api/auth/logout
+app.post('/api/auth/logout', (req, res) => {
+    req.session.destroy(err => {
+        if (err) {
+            return res.status(500).json({ error: "Could not log out" });
+        }
+        res.clearCookie('connect.sid');
+        res.json({ message: "Logout successful" });
+    });
+});
+
+// GET /api/auth/me
+app.get('/api/auth/me', (req, res) => {
+    if (req.session && req.session.user) {
+        res.json({ authenticated: true, user: req.session.user });
+    } else {
+        res.json({ authenticated: false, user: null });
+    }
+});
 
 // Helper to get DB connection (using callback-based sqlite3 for simplicity in standard node usage with 'sqlite3' package)
 const db = new sqlite3.Database(DB_PATH, sqlite3.OPEN_READWRITE, (err) => {
@@ -470,7 +549,9 @@ app.get('/api/admin/driver-results', (req, res) => {
 
 // PUT /api/results/:id
 // Update a specific race result (Rank, Points, Championship Points, Car, and StartNr)
-app.put('/api/results/:id', (req, res) => {
+// PUT /api/results/:id
+// Update a specific race result (Rank, Points, Championship Points, Car, and StartNr)
+app.put('/api/results/:id', requireAdmin, (req, res) => {
     const resultId = req.params.id;
     const { rank, points, championship_points, car, start_number } = req.body;
 

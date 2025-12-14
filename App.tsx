@@ -7,7 +7,9 @@ import { Gallery } from './pages/Gallery';
 import { Profile } from './pages/Profile';
 import AdminResults from './pages/AdminResults';
 import { ChatAssistant } from './components/ChatAssistant';
+import Login from './pages/Login';
 import { User } from './types';
+import { useAuth } from './context/AuthContext';
 
 // Context is now dynamic
 import { Driver, Event } from './types';
@@ -19,8 +21,8 @@ import { EventResults } from './pages/EventResults';
 const App: React.FC = () => {
   const [page, setPage] = useState('home');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
+  // Real Auth Context
+  const { user, loading } = useAuth();
   const [contextString, setContextString] = useState('');
 
   useEffect(() => {
@@ -34,19 +36,8 @@ const App: React.FC = () => {
     }).catch(err => console.error("Failed to load context:", err));
   }, []);
 
-  // Mock Login Handler
-  const handleLogin = (isDriver: boolean) => {
-    const mockUser: User = {
-      id: isDriver ? 'u1' : 'u2',
-      name: isDriver ? 'Max Müller' : 'Renn Fan 88',
-      email: 'test@example.com',
-      role: isDriver ? 'DRIVER' : 'USER',
-      driverId: isDriver ? 'd1' : undefined,
-      isPremium: isDriver
-    };
-    setUser(mockUser);
-    setShowLoginModal(false);
-  };
+  // Create simple onNavigate wrapper to handle routing
+  const navigate = (newPage: string) => setPage(newPage);
 
   const handleSelectEvent = (eventId: string) => {
     setSelectedEventId(eventId);
@@ -55,20 +46,26 @@ const App: React.FC = () => {
 
   const renderPage = () => {
     switch (page) {
-      case 'home': return <Home onNavigate={setPage} />;
+      case 'home': return <Home onNavigate={navigate} />;
       case 'drivers': return <Drivers />;
       case 'events': return <Events onSelectEvent={handleSelectEvent} />;
       case 'event-results': return selectedEventId ? <EventResults eventId={selectedEventId} onBack={() => setPage('events')} /> : <Events onSelectEvent={handleSelectEvent} />;
       case 'gallery': return <Gallery user={user} />;
-      case 'admin': return <AdminResults />;
-      case 'profile': return user ? <Profile user={user} driverData={MOCK_DRIVERS.find(d => d.id === user.driverId)} onLogout={() => { setUser(null); setPage('home'); }} onUpdate={setUser} /> : <Home onNavigate={setPage} />;
-      default: return <Home onNavigate={setPage} />;
+      case 'admin':
+        // Auth Protection for Admin
+        if (!user || user.role !== 'ADMIN') return <Login onNavigate={navigate} />;
+        return <AdminResults />;
+      case 'login': return <Login onNavigate={navigate} />;
+      case 'profile': return user ? <Profile user={user} driverData={MOCK_DRIVERS.find(d => d.id === user.driverId)} onLogout={() => { /* Logout handled by context usually or component */ setPage('home'); }} onUpdate={() => { }} /> : <Home onNavigate={navigate} />;
+      default: return <Home onNavigate={navigate} />;
     }
   };
 
+  if (loading) return <div className="text-white text-center mt-20">Loading...</div>;
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 font-sans selection:bg-red-500 selection:text-white">
-      <Navbar currentPage={page} onNavigate={setPage} user={user} onLoginClick={() => setShowLoginModal(true)} />
+      <Navbar currentPage={page} onNavigate={setPage} user={user} onLoginClick={() => setPage('login')} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {renderPage()}
@@ -84,20 +81,7 @@ const App: React.FC = () => {
       {/* Floating Chatbot */}
       <ChatAssistant contextData={contextString} />
 
-      {/* Simple Modal for Login Mock */}
-      {showLoginModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-2xl max-w-sm w-full">
-            <h2 className="text-xl font-bold text-white mb-4">Anmelden</h2>
-            <p className="text-slate-400 mb-6 text-sm">Simulierte Anmeldung für die Demo.</p>
-            <div className="space-y-3">
-              <Button fullWidth onClick={() => handleLogin(true)}>Als Fahrer (Max Müller)</Button>
-              <Button fullWidth variant="secondary" onClick={() => handleLogin(false)}>Als Fan / Zuschauer</Button>
-              <Button fullWidth variant="outline" onClick={() => setShowLoginModal(false)}>Abbrechen</Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Modal Removed - uses Login page now */}
     </div>
   );
 };
