@@ -26,6 +26,51 @@ export const Gallery: React.FC<GalleryProps> = ({ user }) => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Tagging State
+  const [taggingPhotoId, setTaggingPhotoId] = useState<string | null>(null);
+  const [allDrivers, setAllDrivers] = useState<{ id: string, name: string, start_number?: number }[]>([]);
+  const [tagSearch, setTagSearch] = useState('');
+
+  useEffect(() => {
+    if (user?.role === 'ADMIN') {
+      fetch('http://localhost:3000/api/admin/all-drivers', { credentials: 'include' })
+        .then(r => r.json())
+        .then(setAllDrivers)
+        .catch(e => console.error(e));
+    }
+  }, [user]);
+
+  const handleAddTag = (driverId: string) => {
+    if (!taggingPhotoId) return;
+
+    fetch(`http://localhost:3000/api/photos/${taggingPhotoId}/tags`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ driverId }),
+      credentials: 'include'
+    })
+      .then(async res => {
+        if (res.ok) {
+          await loadPhotos(selectedEventId); // Wait for reload
+          setTaggingPhotoId(null);
+          setTagSearch('');
+          // alert("Tag erfolgreich gespeichert!"); // Optional feedback
+        } else {
+          const err = await res.json();
+          alert(`Fehler beim Speichern: ${err.error}`);
+        }
+      })
+      .catch(e => {
+        console.error(e);
+        alert("Netzwerkfehler beim Speichern des Tags.");
+      });
+  };
+
+  const filteredDrivers = allDrivers.filter(d =>
+    d.name.toLowerCase().includes(tagSearch.toLowerCase()) ||
+    (d.start_number && d.start_number.toString().includes(tagSearch))
+  );
+
   useEffect(() => {
     // 1. Load Events (dropdown)
     fetch('http://localhost:3000/api/events')
@@ -114,7 +159,8 @@ export const Gallery: React.FC<GalleryProps> = ({ user }) => {
     try {
       const res = await fetch('http://localhost:3000/api/photos', {
         method: 'POST',
-        body: formData
+        body: formData,
+        credentials: 'include'
       });
 
       if (res.ok) {
@@ -235,8 +281,49 @@ export const Gallery: React.FC<GalleryProps> = ({ user }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-fade-in">
             {photos.map(photo => (
               <div key={photo.id} className="group bg-slate-800 rounded-lg overflow-hidden border border-slate-700 hover:border-slate-500 transition relative">
-                <div className="aspect-[4/3] overflow-hidden bg-slate-900">
+                <div className="aspect-[4/3] overflow-hidden bg-slate-900 relative">
                   <img src={photo.url} alt="Autocross" className="w-full h-full object-cover transition duration-500 group-hover:scale-105" />
+
+                  {/* Tags Overlay */}
+                  <div className="absolute top-2 left-2 flex flex-wrap gap-1 z-20">
+                    {photo.tags && photo.tags.map(tag => (
+                      <div key={tag.id} className="bg-black/60 backdrop-blur text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 border border-white/10">
+                        <span>@{tag.name}</span>
+                        {user?.role === 'ADMIN' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm('Tag löschen?')) {
+                                fetch(`http://localhost:3000/api/photos/${photo.id}/tags/${tag.id}`, { method: 'DELETE', credentials: 'include' })
+                                  .then(res => {
+                                    if (res.ok) loadPhotos(selectedEventId);
+                                    else alert("Fehler beim Löschen des Tags");
+                                  });
+                              }
+                            }}
+                            className="text-red-400 hover:text-red-200 ml-1 font-bold"
+                          >×</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Admin Tag Button */}
+                  {user?.role === 'ADMIN' && (
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition z-20">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.stopPropagation();
+                          setTaggingPhotoId(photo.id);
+                        }}
+                        className="bg-red-600 text-white p-1.5 rounded shadow hover:bg-red-700"
+                        title="Fahrer markieren"
+                      >
+                        <Tag size={16} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition flex flex-col justify-end p-4">
@@ -278,6 +365,37 @@ export const Gallery: React.FC<GalleryProps> = ({ user }) => {
         <div className="text-center p-8 bg-slate-800/50 rounded-lg border border-slate-700 border-dashed">
           <ImageIcon className="mx-auto text-slate-500 mb-2" size={32} />
           <p className="text-slate-400">Melde dich an, um erste Fotos hochzuladen.</p>
+        </div>
+      )}
+      {/* TAGGING MODAL */}
+      {taggingPhotoId && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setTaggingPhotoId(null)}>
+          <div className="bg-slate-800 rounded-lg w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-xl font-bold text-white mb-4">Fahrer markieren</h3>
+            <input
+              type="text"
+              placeholder="Fahrer suchen..."
+              className="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 mb-4 focus:border-red-500 outline-none"
+              value={tagSearch}
+              onChange={e => setTagSearch(e.target.value)}
+              autoFocus
+            />
+            <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-1">
+              {filteredDrivers.map(driver => (
+                <button
+                  key={driver.id}
+                  onClick={() => handleAddTag(driver.id)}
+                  className="w-full text-left p-2 hover:bg-slate-700 rounded text-slate-200"
+                >
+                  {driver.name} {driver.start_number ? `(#${driver.start_number})` : ''}
+                </button>
+              ))}
+              {filteredDrivers.length === 0 && <p className="text-slate-500 text-center py-2">Keine Fahrer gefunden.</p>}
+            </div>
+            <button onClick={() => setTaggingPhotoId(null)} className="mt-4 w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded">
+              Abbrechen
+            </button>
+          </div>
         </div>
       )}
     </div>

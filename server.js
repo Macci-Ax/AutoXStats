@@ -13,8 +13,11 @@ const app = express();
 const PORT = 3000;
 const DB_PATH = './autox.db';
 
-app.use(cors());
-app.use(cors());
+app.use(cors({
+    origin: 'http://localhost:5173', // Vite default port
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+}));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -119,6 +122,14 @@ const db = new sqlite3.Database(DB_PATH, sqlite3.OPEN_READWRITE, (err) => {
         console.error("Error opening database:", err.message);
     } else {
         console.log("Connected to the SQLite database.");
+        // Ensure photo_tags table exists
+        db.run(`CREATE TABLE IF NOT EXISTS photo_tags (
+            id TEXT PRIMARY KEY,
+            photo_id TEXT,
+            driver_id TEXT,
+            FOREIGN KEY(photo_id) REFERENCES photos(id),
+            FOREIGN KEY(driver_id) REFERENCES drivers(id)
+        )`);
     }
 });
 
@@ -525,7 +536,7 @@ app.get('/api/race-results', (req, res) => {
 // GET /api/admin/all-drivers
 // Returns simple list of all drivers for the dropdown
 app.get('/api/admin/all-drivers', (req, res) => {
-    const query = "SELECT id, name FROM drivers ORDER BY name";
+    const query = "SELECT id, name, start_number FROM drivers ORDER BY name";
     db.all(query, [], (err, rows) => {
         if (err) {
             res.status(400).json({ error: err.message });
@@ -762,29 +773,102 @@ app.get('/api/gallery/events', (req, res) => {
 // GET /api/photos
 app.get('/api/photos', (req, res) => {
     const { eventId } = req.query;
-    let query = `SELECT * FROM photos`;
+    let query = `
+        SELECT 
+            p.*,
+            GROUP_CONCAT(pt.id || '::' || pt.driver_id || '::' || IFNULL(d.name, 'Unknown'), '||') as tags_raw
+        FROM photos p
+        LEFT JOIN photo_tags pt ON p.id = pt.photo_id
+        LEFT JOIN drivers d ON pt.driver_id = d.id
+    `;
     const params = [];
-
     if (eventId) {
-        query += ` WHERE event_id = ?`;
+        query += " WHERE p.event_id = ?";
         params.push(eventId);
     }
-
-    query += ` ORDER BY created_at DESC`;
+    query += " GROUP BY p.id ORDER BY p.created_at DESC";
 
     db.all(query, params, (err, rows) => {
         if (err) {
-            res.status(500).json({ error: err.message });
-            return;
+            console.error("Error fetching photos:", err.message);
+            return res.status(500).json({ error: err.message });
         }
+
         // Map to frontend expectation
+        const photos = rows.map(r => {
+            const tags = [];
+            if (r.tags_raw) {
+                r.tags_raw.split('||').forEach(t => {
+                    const parts = t.split('::');
+                    if (parts.length === 3) {
+                        tags.push({ id: parts[0], driverId: parts[1], name: parts[2] });
+                    }
+                });
+            }
+            return {
+                id: r.id,
+                url: r.storage_path, // Mapping 'storage_path' to 'url'
+                eventId: r.event_id,
+                photographer: r.photographer || 'Gast',
+                uploadDate: r.created_at,
+                highResAvailable: true, // Default true for local uploads
+                tags: tags
+            };
+        });
+        res.json(photos);
+    });
+});
+
+// POST /api/photos/:id/tags
+// Add a tag to a photo
+app.post('/api/photos/:id/tags', requireAdmin, (req, res) => {
+    const photoId = req.params.id;
+    const { driverId } = req.body;
+
+    if (!driverId) return res.status(400).json({ error: "Driver ID required" });
+
+    const tagId = 'tag_' + Date.now() + '_' + Math.round(Math.random() * 1000);
+    db.run(
+        "INSERT INTO photo_tags (id, photo_id, driver_id) VALUES (?, ?, ?)",
+        [tagId, photoId, driverId],
+        function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ message: "Tag added", tag: { id: tagId, driverId } });
+        }
+    );
+});
+
+// DELETE /api/photos/:id/tags/:tagId
+// Remove a tag
+app.delete('/api/photos/:id/tags/:tagId', requireAdmin, (req, res) => {
+    const { tagId } = req.params;
+    db.run("DELETE FROM photo_tags WHERE id = ?", [tagId], function (err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Tag removed" });
+    });
+});
+
+// GET /api/drivers/:id/photos
+// Get all photos tagged for a driver
+app.get('/api/drivers/:id/photos', (req, res) => {
+    const driverId = req.params.id;
+    const query = `
+        SELECT p.* 
+        FROM photos p
+        JOIN photo_tags pt ON p.id = pt.photo_id
+        WHERE pt.driver_id = ?
+        ORDER BY p.created_at DESC
+    `;
+    db.all(query, [driverId], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+
         const photos = rows.map(r => ({
             id: r.id,
-            url: r.storage_path, // Mapping 'storage_path' to 'url'
+            url: r.storage_path,
             eventId: r.event_id,
             photographer: r.photographer || 'Gast',
             uploadDate: r.created_at,
-            highResAvailable: true // Default true for local uploads
+            highResAvailable: true
         }));
         res.json(photos);
     });

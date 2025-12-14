@@ -61,13 +61,19 @@ export interface Event {
   winnerId?: string;
 }
 
+export interface PhotoTag {
+  id: string;
+  driverId: string;
+  name: string;
+}
+
 export interface Photo {
   id: string;
   url: string;
   photographer: string;
   eventId: string;
   driverId?: string; // Optional linking to driver
-  tags: string[];
+  tags: PhotoTag[];
   uploadDate: string;
   highResAvailable: boolean;
 }

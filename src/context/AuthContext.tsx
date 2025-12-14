@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const checkAuth = async () => {
         try {
-            const res = await fetch('http://localhost:3000/api/auth/me'); // Ensure correct port/host
+            const res = await fetch('http://localhost:3000/api/auth/me', { credentials: 'include' }); // Ensure correct port/host
             const data = await res.json();
             if (data.authenticated && data.user) {
                 setUser(data.user);
@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const logout = async () => {
         try {
-            await fetch('http://localhost:3000/api/auth/logout', { method: 'POST' });
+            await fetch('http://localhost:3000/api/auth/logout', { method: 'POST', credentials: 'include' });
             setUser(null);
         } catch (error) {
             console.error("Logout failed", error);

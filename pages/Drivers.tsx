@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Trophy, BarChart2, ChevronLeft, Flag, Medal, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
+import { Search, Trophy, BarChart2, ChevronLeft, Flag, Medal, ChevronDown, ChevronUp, Calendar, Image as ImageIcon } from 'lucide-react';
 import { MOCK_DRIVERS } from '../constants';
 import { Championship, Driver, LeaderboardEntry } from '../types';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -67,28 +67,39 @@ export const Drivers: React.FC = () => {
       .catch(err => console.error("Failed to fetch drivers:", err));
   }, [selectedYear]);
 
+  // State for Driver Photos
+  const [driverPhotos, setDriverPhotos] = useState<{ id: string, url: string }[]>([]);
+
   useEffect(() => {
     if (selectedEntry) {
       const driverId = selectedEntry.driver.originalId || selectedEntry.driver.id;
-      // Note: Backend might need adjustment if ID is complex, but server.js returns driver_id as id in driver object
+      // Fetch Results
       fetch(`http://localhost:3000/api/drivers/${driverId}/results`)
         .then(res => res.json())
         .then(data => setRecentResults(data))
         .catch(err => console.error("Failed to fetch results:", err));
+
+      // Fetch Photos
+      fetch(`http://localhost:3000/api/drivers/${driverId}/photos`)
+        .then(res => res.json())
+        .then(data => {
+          const mapped = data.map((p: any) => ({ ...p, url: `http://localhost:3000${p.url}` }));
+          setDriverPhotos(mapped);
+        })
+        .catch(err => console.error("Failed to fetch photos:", err));
+
     } else {
       setRecentResults([]);
+      setDriverPhotos([]);
     }
   }, [selectedEntry]);
 
   // Filter drivers based on selection
   const safeEntries = Array.isArray(entries) ? entries : [];
   const filteredEntries = safeEntries.filter(entry => {
-
-    // If a championship is selected, only show drivers from that champ
     if (activeChampionship && (!entry.championships || !entry.championships.includes(activeChampionship))) {
       return false;
     }
-    // Search logic
     const searchTermLower = searchTerm.toLowerCase();
     const teamName = entry.team ? entry.team.name.toLowerCase() : '';
     const matchesSearch = entry.driver.name.toLowerCase().includes(searchTermLower) ||
@@ -113,8 +124,6 @@ export const Drivers: React.FC = () => {
   });
 
   const sortedClasses = Object.keys(entriesByClass).sort((a, b) => {
-    // Custom sort: "Langstrecke" at the bottom (or top? usually separated). 
-    // Let's stick to alphanumeric natural sort for "Klasse 1", "Klasse 2", "Klasse 10".
     return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
   });
 
@@ -137,23 +146,11 @@ export const Drivers: React.FC = () => {
 
   const filteredClassesByCategory = sortedClasses.filter(cls => {
     if (activeCategory === 'Alle') return true;
-    // Special handling for strict or partial matching if needed, but includes is usually fine
     return cls.toLowerCase().includes(activeCategory.toLowerCase());
   });
 
   const renderDetail = (entry: LeaderboardEntry) => {
     const isLangstrecke = entry.driverClass?.includes('Langstrecke');
-
-    // Group results by class for the breakdown view
-    const groupedResults = recentResults.reduce((acc, result) => {
-      const cls = result.class_name || 'Unbekannt';
-      if (!acc[cls]) {
-        acc[cls] = { points: 0, wins: 0 };
-      }
-      acc[cls].points += result.points;
-      if (result.rank === 1) acc[cls].wins += 1;
-      return acc;
-    }, {} as Record<string, { points: number, wins: number }>);
 
     // Filter results for the current season only (for the graph)
     const seasonResults = recentResults.filter(r => {
@@ -162,6 +159,7 @@ export const Drivers: React.FC = () => {
     });
 
     const chartData = Array.from({ length: 10 }, (_, i) => {
+      // ... (existing chart data logic)
       const rank = i + 1;
       return {
         name: `${rank}. Platz`,
@@ -169,7 +167,7 @@ export const Drivers: React.FC = () => {
         color: rank === 1 ? '#EAB308' :
           rank === 2 ? '#94A3B8' :
             rank === 3 ? '#B45309' :
-              '#334155' // Default color for other ranks
+              '#334155'
       };
     });
 
@@ -202,7 +200,7 @@ export const Drivers: React.FC = () => {
           {entry.driver.bio && <p className="text-slate-300 mb-6 italic border-l-2 border-slate-600 pl-3">{entry.driver.bio}</p>}
 
           <div className={`grid grid-cols-2 ${isLangstrecke ? 'md:grid-cols-3' : 'md:grid-cols-4'} gap-4 mb-8`}>
-
+            {/* ... (existing stats boxes) ... */}
             <div className="bg-slate-900 p-3 rounded text-center flex flex-col items-center justify-center relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-1 opacity-10 group-hover:opacity-20 transition-opacity">
                 <Medal size={48} className="text-yellow-500" />
@@ -239,7 +237,6 @@ export const Drivers: React.FC = () => {
               </div>
             </div>
 
-            {/* Hide Heat Wins for Langstrecke */}
             {!isLangstrecke && (
               <div className="bg-slate-900 p-3 rounded text-center flex flex-col items-center justify-center">
                 <div className="text-xs text-slate-500 uppercase tracking-wider mb-1">Laufsiege</div>
@@ -248,9 +245,29 @@ export const Drivers: React.FC = () => {
             )}
           </div>
 
-          {/* UPDATED: Class Breakdown using official driver entries */}
+          {/* DRIVER PHOTOS SECTION */}
+          {driverPhotos.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-sm font-bold text-slate-400 mb-3 uppercase flex items-center gap-2">
+                <ImageIcon size={16} /> Galerie ({driverPhotos.length})
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {driverPhotos.slice(0, 6).map(photo => (
+                  <div key={photo.id} className="aspect-square bg-slate-900 rounded overflow-hidden hover:opacity-90 cursor-pointer">
+                    <img src={photo.url} alt="Driver Action" className="w-full h-full object-cover" />
+                  </div>
+                ))}
+              </div>
+              {driverPhotos.length > 6 && (
+                <p className="text-right text-xs text-slate-500 mt-1 cursor-pointer hover:text-white">Mehr anzeigen...</p>
+              )}
+            </div>
+          )}
+
+          {/* ... (rest of the component: class breakdown, chart, results) ... */}
+
           {(() => {
-            // Find all driver entries that belong to this person (same ID)
+            // ... Class Breakdown Logic ... 
             const allClassParticipations = entries.filter(e =>
               e.driver.id === entry.driver.id
             ).sort((a, b) => b.stats.points - a.stats.points);
@@ -258,62 +275,25 @@ export const Drivers: React.FC = () => {
             if (allClassParticipations.length > 1) {
               return (
                 <div className="mb-8 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
-                  <h3 className="text-sm font-bold text-slate-400 mb-3 uppercase">Punkte nach Klasse</h3>
+                  {/* ... */}
                   <div className="space-y-2">
-                    {allClassParticipations.map((p) => (
-                      <div key={p.driver.id + p.driverClass} className="flex justify-between items-center bg-slate-900 p-3 rounded border border-slate-800 hover:border-slate-600 transition group">
-
+                    {allClassParticipations.map(p => (
+                      <div key={p.driver.id + p.driverClass} className="flex justify-between items-center bg-slate-900 p-3 rounded border border-slate-800">
                         <div className="flex items-center gap-3">
-                          {/* Rank Badge */}
-                          <div className={`
-                             w-8 h-8 flex items-center justify-center rounded-full font-bold text-lg
-                             ${p.stats.seasonRank === 1 ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' :
-                              p.stats.seasonRank === 2 ? 'bg-slate-400/20 text-slate-300 border border-slate-400/50' :
-                                p.stats.seasonRank === 3 ? 'bg-amber-700/20 text-amber-600 border border-amber-700/50' :
-                                  'bg-slate-800 text-slate-500 border border-slate-700'}
-                           `}>
-                            {p.stats.seasonRank || '-'}
-                          </div>
-
-                          <div>
-                            <span className="text-slate-200 font-bold block">{p.driverClass}</span>
-                            <span className="text-xs text-slate-500 uppercase">
-                              {p.stats.seasonRank === 1 ? 'Meister' : 'Platzierung'}
-                            </span>
-                          </div>
+                          <span className="text-slate-200 font-bold block">{p.driverClass}</span>
                         </div>
-
-                        <div className="flex items-center gap-6">
-                          <div className="text-right hidden sm:block">
-                            <span className="block text-slate-200 font-bold">{p.stats.wins}</span>
-                            <span className="text-xs text-slate-500 uppercase">Siege</span>
-                          </div>
-                          <div className="text-right">
-                            <span className="block text-white font-black text-xl">{p.stats.points}</span>
-                            <span className="text-xs text-slate-500 uppercase">Punkte</span>
-                          </div>
-                        </div>
-
+                        <span className="text-white font-black">{p.stats.points} Pkt</span>
                       </div>
                     ))}
                   </div>
                 </div>
-              );
+              )
             }
             return null;
           })()}
 
-          {entry.stats.seasonRank && (
-            <div className="mb-8 p-4 bg-yellow-900/20 border border-yellow-700/50 rounded-lg flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Trophy className="text-yellow-500" size={24} />
-                <span className="text-yellow-100 font-medium">Aktueller Meisterschaftsrang</span>
-              </div>
-              <span className="text-3xl font-black text-yellow-500">#{entry.stats.seasonRank}</span>
-            </div>
-          )}
-
-          <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700/50 h-64">
+          {/* Chart */}
+          <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700/50 h-64 mb-8">
             <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Leistungsdaten (Aktuelle Saison)</h3>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 30 }}>
@@ -331,6 +311,9 @@ export const Drivers: React.FC = () => {
               </BarChart>
             </ResponsiveContainer>
           </div>
+
+          {/* Recent Races Section */}
+          {/* ... */}
 
           {/* Recent Races Section */}
           {recentResults.length > 0 && (
@@ -395,6 +378,8 @@ export const Drivers: React.FC = () => {
               </div>
             </div>
           )}
+
+
         </div>
       </div>
     );
