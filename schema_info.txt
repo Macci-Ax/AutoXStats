@@ -1,0 +1,109 @@
+CREATE TABLE teams (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL
+    );
+
+CREATE TABLE team_memberships (
+        team_id TEXT NOT NULL,
+        driver_id TEXT NOT NULL,
+        event_id TEXT NOT NULL,
+        role TEXT NOT NULL,
+        PRIMARY KEY (team_id, driver_id, event_id)
+    );
+
+CREATE TABLE photos (
+        id TEXT PRIMARY KEY,
+        event_id TEXT NOT NULL,
+        storage_path TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+CREATE TABLE photo_driver_tags (
+        photo_id TEXT NOT NULL,
+        driver_id TEXT NOT NULL,
+        PRIMARY KEY (photo_id, driver_id)
+    );
+
+CREATE TABLE videos (
+        id TEXT PRIMARY KEY,
+        driver_id TEXT NOT NULL,
+        event_id TEXT NOT NULL,
+        youtube_url TEXT NOT NULL,
+        consent_given BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+CREATE TABLE championships (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      year INTEGER NOT NULL
+  );
+
+CREATE TABLE classes (
+      id TEXT PRIMARY KEY,
+      championship_id TEXT,
+      name TEXT NOT NULL,
+      FOREIGN KEY (championship_id) REFERENCES championships(id)
+  );
+
+CREATE TABLE drivers (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      team TEXT,
+      car TEXT,
+      start_number INTEGER,
+      current_class_id TEXT,
+      bio TEXT,
+      points INTEGER DEFAULT 0,
+      season_rank INTEGER,
+      wins INTEGER DEFAULT 0,
+      second_places INTEGER DEFAULT 0,
+      third_places INTEGER DEFAULT 0,
+      heat_wins INTEGER DEFAULT 0,
+      podiums INTEGER DEFAULT 0,
+      FOREIGN KEY (current_class_id) REFERENCES classes(id)
+  );
+
+CREATE TABLE events (
+      id TEXT PRIMARY KEY,
+      championship_id TEXT,
+      name TEXT NOT NULL,
+      date TEXT NOT NULL,
+      location TEXT,
+      status TEXT,
+      winner_driver_id TEXT,
+      FOREIGN KEY (championship_id) REFERENCES championships(id)
+  );
+
+CREATE TABLE race_results (
+      id TEXT PRIMARY KEY,
+      event_id TEXT,
+      driver_id TEXT,
+      class_id TEXT,
+      rank INTEGER,
+      points INTEGER,
+      laps INTEGER,
+      total_time TEXT,
+      heat_wins INTEGER DEFAULT 0,
+      start_number INTEGER,
+      car TEXT,
+      reconstructed INTEGER DEFAULT 0,
+      license_type TEXT DEFAULT 'DRCV',
+      championship_points INTEGER DEFAULT 0,
+      FOREIGN KEY (event_id) REFERENCES events(id),
+      FOREIGN KEY (driver_id) REFERENCES drivers(id),
+      FOREIGN KEY (class_id) REFERENCES classes(id)
+  );
+
+CREATE TABLE driver_participations (
+      driver_id TEXT,
+      class_id TEXT,
+      points INTEGER DEFAULT 0,
+      rank INTEGER,
+      wins INTEGER DEFAULT 0,
+      podiums INTEGER DEFAULT 0,
+      PRIMARY KEY (driver_id, class_id),
+      FOREIGN KEY (driver_id) REFERENCES drivers(id),
+      FOREIGN KEY (class_id) REFERENCES classes(id)
+  );
+

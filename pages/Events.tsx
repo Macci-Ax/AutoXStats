@@ -10,7 +10,12 @@ interface Event {
   status: 'COMPLETED' | 'UPCOMING';
 }
 
-export const Events: React.FC = () => {
+interface EventsProps {
+  onNavigate?: (page: string) => void;
+  onSelectEvent?: (eventId: string) => void;
+}
+
+export const Events: React.FC<EventsProps> = ({ onNavigate, onSelectEvent }) => {
   const [events, setEvents] = useState<Event[]>([]);
 
   useEffect(() => {
@@ -60,7 +65,10 @@ export const Events: React.FC = () => {
               {/* Actions */}
               <div className="p-4 md:p-6 bg-slate-900/50 flex flex-col justify-center gap-2 md:w-48 border-t md:border-t-0 md:border-l border-slate-700">
                 {isCompleted ? (
-                  <button className="w-full bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium py-2 rounded transition">
+                  <button
+                    onClick={() => onSelectEvent && onSelectEvent(event.id)}
+                    className="w-full bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium py-2 rounded transition"
+                  >
                     Ergebnisse
                   </button>
                 ) : (

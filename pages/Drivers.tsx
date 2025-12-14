@@ -155,11 +155,17 @@ export const Drivers: React.FC = () => {
       return acc;
     }, {} as Record<string, { points: number, wins: number }>);
 
+    // Filter results for the current season only (for the graph)
+    const seasonResults = recentResults.filter(r => {
+      const resultYear = new Date(r.event_date).getFullYear();
+      return resultYear === selectedYear;
+    });
+
     const chartData = Array.from({ length: 10 }, (_, i) => {
       const rank = i + 1;
       return {
         name: `${rank}. Platz`,
-        Anzahl: recentResults.filter(r => r.rank === rank).length,
+        Anzahl: seasonResults.filter(r => r.rank === rank).length,
         color: rank === 1 ? '#EAB308' :
           rank === 2 ? '#94A3B8' :
             rank === 3 ? '#B45309' :
@@ -560,6 +566,12 @@ export const Drivers: React.FC = () => {
                         </div>
                         <div className="text-right hidden sm:block">
                           <div className="text-lg font-bold text-slate-200">{entry.stats.points} <span className="text-xs text-slate-500 font-normal">Pkt</span></div>
+                          {(entry.stats.droppedPoints && entry.stats.droppedPoints > 0) ? (
+                            <div className="text-xs text-slate-500">
+                              <span title="Gesamtpunkte Vor Streicher">{entry.stats.rawPoints}</span>
+                              <span className="text-rose-500/70" title="Streichergebnis"> -{entry.stats.droppedPoints}</span>
+                            </div>
+                          ) : null}
                           {entry.stats.seasonRank && <div className={`text-xs font-bold ${entry.stats.seasonRank <= 3 ? 'text-yellow-500' : 'text-slate-500'}`}>#{entry.stats.seasonRank}</div>}
                         </div>
                       </div>

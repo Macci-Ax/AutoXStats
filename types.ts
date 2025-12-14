@@ -28,6 +28,8 @@ export interface Team {
 
 export interface DriverStats {
   points: number;
+  rawPoints?: number;
+  droppedPoints?: number;
   seasonRank?: number; // Current rank in championship
   wins: number; // Final race wins
   secondPlaces: number; // Final race 2nd places

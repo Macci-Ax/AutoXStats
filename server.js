@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import sqlite3 from 'sqlite3';
+import Parser from 'rss-parser';
 
 const app = express();
 const PORT = 3000;
@@ -47,89 +48,207 @@ app.get('/api/years', (req, res) => {
 // GET /api/drivers
 // Returns all drivers with calculated total stats
 // Query params: ?year=YYYY (optional, defaults to current year)
+// GET /api/drivers
+// Returns all drivers with calculated total stats including Streicher (dropped scores)
+// Query params: ?year=YYYY (optional, defaults to current year)
 app.get('/api/drivers', (req, res) => {
     // Use query parameter year or default to current year
     const year = req.query.year || String(new Date().getFullYear());
 
-    // Aggregation Query - filter by selected year
-    const query = `
+    // 1. Fetch Class Events (The Rules)
+    const rulesQuery = `
+        SELECT class_id, event_id, discipline 
+        FROM class_events 
+        JOIN events e ON class_events.event_id = e.id
+        WHERE strftime('%Y', e.date) = ?
+    `;
+
+    // 2. Fetch All Results (The Data)
+    const dataQuery = `
         SELECT 
             d.id as driver_id,
-            dp.class_id,
             d.name, 
             d.team, 
             d.car, 
             d.start_number as number, 
-            c.name as driverClass,
             d.bio,
-            RANK() OVER (
-                PARTITION BY dp.class_id 
-                ORDER BY COALESCE(SUM(r.championship_points), dp.points) DESC
-            ) as season_rank,
             d.heat_wins as static_heat,
-            dp.points as static_points,
+            dp.points as static_points, -- Fallback for manual points
+            dp.class_id,
+            c.name as driverClass,
             c.championship_id as champ_id,
-            SUM(r.championship_points) as calc_points,
-            COUNT(CASE WHEN r.rank = 1 THEN 1 END) as calc_wins,
-            COUNT(CASE WHEN r.rank = 2 THEN 1 END) as calc_second,
-            COUNT(CASE WHEN r.rank = 3 THEN 1 END) as calc_third,
-            COUNT(CASE WHEN r.rank = 4 THEN 1 END) as calc_fourth,
-            COUNT(CASE WHEN r.rank = 5 THEN 1 END) as calc_fifth,
-            SUM(r.heat_wins) as calc_heat,
-            COUNT(r.id) as races,
-            COUNT(CASE WHEN r.rank <= 3 THEN 1 END) as calc_podiums
+            r.id as result_id,
+            r.event_id,
+            r.championship_points,
+            r.rank,
+            r.heat_wins as race_heat_wins
         FROM drivers d
         JOIN driver_participations dp ON d.id = dp.driver_id
         JOIN classes c ON dp.class_id = c.id
         LEFT JOIN race_results r ON d.id = r.driver_id AND dp.class_id = r.class_id
         LEFT JOIN events e ON r.event_id = e.id
-        WHERE e.id IS NULL OR strftime('%Y', e.date) = ?
-        GROUP BY d.id, dp.class_id
-        HAVING SUM(r.championship_points) > 0 OR dp.points > 0
-        ORDER BY driverClass, COALESCE(SUM(r.championship_points), dp.points) DESC
+        WHERE (e.id IS NULL OR strftime('%Y', e.date) = ?)
     `;
 
-    db.all(query, [year], (err, rows) => {
+    db.all(rulesQuery, [year], (err, rulesRows) => {
         if (err) {
-            console.error("Database Error:", err.message);
-            res.status(400).json({ error: err.message });
-            return;
+            console.error("Database Error (Rules):", err.message);
+            return res.status(500).json({ error: err.message });
         }
 
-        // Transform to match Frontend Interface 'LeaderboardEntry'
-        const entries = rows.map(row => {
-            const hasRaces = row.races > 0;
-            // Use composite ID for unique React keys if same driver is in multiple classes
-            // Format: driver_id::class_id
-            // const uniqueId = row.class_id ? `${row.driver_id}::${row.class_id}` : row.driver_id;
-
-            return {
-                driver: {
-                    id: row.driver_id,
-                    name: row.name,
-                    bio: row.bio || "",
-                    avatarUrl: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=200',
-                },
-                team: row.team ? { id: 't_unknown', name: row.team } : undefined,
-                car: row.car || "",
-                number: row.number,
-                driverClass: row.driverClass || "Unassigned",
-                championships: row.champ_id ? [row.champ_id] : [],
-                stats: {
-                    points: hasRaces ? (row.calc_points || 0) : (row.static_points || 0),
-                    wins: hasRaces ? row.calc_wins : (row.static_wins || 0),
-                    secondPlaces: hasRaces ? row.calc_second : (row.static_second || 0),
-                    thirdPlaces: hasRaces ? row.calc_third : (row.static_third || 0),
-                    fourthPlaces: hasRaces ? row.calc_fourth : 0,
-                    fifthPlaces: hasRaces ? row.calc_fifth : 0,
-                    heatWins: hasRaces ? (row.calc_heat || 0) : (row.static_heat || 0),
-                    podiums: hasRaces ? row.calc_podiums : (row.static_podiums || 0),
-                    seasonRank: row.season_rank || 0,
-                }
-            };
+        // Map: class_id -> { discipline, validEvents: Set(event_id) }
+        const classRules = {};
+        rulesRows.forEach(r => {
+            if (!classRules[r.class_id]) {
+                classRules[r.class_id] = { discipline: r.discipline, validEvents: new Set() };
+            }
+            classRules[r.class_id].validEvents.add(r.event_id);
         });
 
-        res.json(entries);
+        db.all(dataQuery, [year], (err, dataRows) => {
+            if (err) {
+                console.error("Database Error (Data):", err.message);
+                return res.status(500).json({ error: err.message });
+            }
+
+            // Group by Driver+Class
+            const driverMap = {};
+
+            dataRows.forEach(row => {
+                const key = `${row.driver_id}::${row.class_id}`;
+                if (!driverMap[key]) {
+                    driverMap[key] = {
+                        driver_id: row.driver_id,
+                        class_id: row.class_id,
+                        name: row.name,
+                        team: row.team,
+                        car: row.car,
+                        number: row.number,
+                        bio: row.bio,
+                        driverClass: row.driverClass,
+                        champ_id: row.champ_id,
+                        static_points: row.static_points || 0,
+                        static_heat: row.static_heat || 0,
+                        results: []
+                    };
+                }
+                if (row.result_id) { // If they have a result
+                    driverMap[key].results.push({
+                        event_id: row.event_id,
+                        points: row.championship_points || 0,
+                        rank: row.rank,
+                        heat_wins: row.race_heat_wins || 0
+                    });
+                }
+            });
+
+            // Calculate Points with Streicher Logic
+            const entries = Object.values(driverMap).map(d => {
+                const rules = classRules[d.class_id];
+                const validEventIds = rules ? rules.validEvents : new Set();
+                const discipline = rules ? rules.discipline : 'unknown';
+
+                // Filter results to only valid events for this class
+                const validResults = d.results.filter(r => validEventIds.has(r.event_id));
+
+                // Determine missing events (did not participate) -> 0 points
+                // Actually, for Streicher logic, we just take the list of ALL valid events for the class,
+                // map the driver's points (0 if missing), and then drop.
+
+                const allEventScores = [];
+                validEventIds.forEach(eventId => {
+                    const res = validResults.find(r => r.event_id === eventId);
+                    allEventScores.push(res ? res.points : 0);
+                });
+
+                // Sort descending
+                allEventScores.sort((a, b) => b - a);
+
+                let rawPoints = allEventScores.reduce((sum, p) => sum + p, 0);
+                let finalPoints = 0;
+
+                // RULE: Drop 2 worst results ONLY for 'klasse'
+                // BUT: Only if there are enough events? Usually rule is absolute.
+                // Assuming simple "Drop worst 2" for now.
+
+                if (discipline === 'klasse' || discipline === 'endlauf') {
+                    // Drop last 1 (User correction)
+                    const scoresToCount = allEventScores.slice(0, Math.max(0, allEventScores.length - 1));
+                    finalPoints = scoresToCount.reduce((sum, p) => sum + p, 0);
+                } else {
+                    // No drops for other disciplines
+                    finalPoints = rawPoints;
+                }
+
+                // Legacy / Static Data Handling
+                const hasRaces = validResults.length > 0;
+
+                // Aggregates
+                const wins = validResults.filter(r => r.rank === 1).length;
+                const seconds = validResults.filter(r => r.rank === 2).length;
+                const thirds = validResults.filter(r => r.rank === 3).length;
+                const fourths = validResults.filter(r => r.rank === 4).length;
+                const fifths = validResults.filter(r => r.rank === 5).length;
+                const heatWins = validResults.reduce((sum, r) => sum + (r.heat_wins || 0), 0);
+
+                return {
+                    driver: {
+                        id: d.driver_id,
+                        name: d.name,
+                        bio: d.bio || "",
+                        avatarUrl: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=200',
+                    },
+                    team: d.team ? { id: 't_unknown', name: d.team } : undefined,
+                    car: d.car || "",
+                    number: d.number,
+                    driverClass: d.driverClass || "Unassigned",
+                    championships: d.champ_id ? [d.champ_id] : [],
+                    stats: {
+                        points: hasRaces ? finalPoints : d.static_points,
+                        rawPoints: hasRaces ? rawPoints : d.static_points, // NEW FIELD
+                        droppedPoints: hasRaces ? (rawPoints - finalPoints) : 0, // NEW FIELD
+                        wins: hasRaces ? wins : 0,
+                        secondPlaces: hasRaces ? seconds : 0,
+                        thirdPlaces: hasRaces ? thirds : 0,
+                        fourthPlaces: hasRaces ? fourths : 0,
+                        fifthPlaces: hasRaces ? fifths : 0,
+                        heatWins: hasRaces ? heatWins : d.static_heat,
+                        podiums: hasRaces ? (wins + seconds + thirds) : 0,
+                        seasonRank: 0, // Will recalculate sorting below
+                    }
+                };
+            });
+
+            // Recalculate Season Ranks properly across the whole list (grouped by class)
+            // 1. Group by class name
+            const byClass = {};
+            entries.forEach(e => {
+                if (!byClass[e.driverClass]) byClass[e.driverClass] = [];
+                byClass[e.driverClass].push(e);
+            });
+
+            // 2. Sort and assign rank
+            Object.keys(byClass).forEach(cls => {
+                // Sort by Points (Desc), then Wins, then Seconds... (simple version: just Points)
+                byClass[cls].sort((a, b) => b.stats.points - a.stats.points);
+                byClass[cls].forEach((e, idx) => {
+                    e.stats.seasonRank = idx + 1;
+                });
+            });
+
+            // Flatten back to list
+            const sortedEntries = Object.values(byClass).flat();
+
+            // Final sort for display (optional, can just return list)
+            // Sorting by Class Name then Rank
+            sortedEntries.sort((a, b) => {
+                if (a.driverClass < b.driverClass) return -1;
+                if (a.driverClass > b.driverClass) return 1;
+                return a.stats.seasonRank - b.stats.seasonRank;
+            });
+
+            res.json(sortedEntries);
+        });
     });
 });
 
@@ -170,6 +289,7 @@ app.get('/api/leaderboard/random-class', (req, res) => {
             FROM drivers d
             JOIN driver_participations dp ON d.id = dp.driver_id
             LEFT JOIN race_results r ON d.id = r.driver_id AND dp.class_id = r.class_id
+                AND EXISTS (SELECT 1 FROM class_events ce WHERE ce.class_id = r.class_id AND ce.event_id = r.event_id)
             WHERE dp.class_id = ?
             GROUP BY d.id
             ORDER BY COALESCE(SUM(r.championship_points), dp.points) DESC
@@ -377,6 +497,85 @@ app.put('/api/results/:id', (req, res) => {
         }
         res.json({ message: "Result updated successfully", changes: this.changes });
     });
+});
+
+app.get('/api/events/:id/results', (req, res) => {
+    const eventId = req.params.id;
+    const query = `
+        SELECT 
+            rr.id,
+            rr.class_id,
+            c.name as class_name,
+            -- Prioritize result-specific start number and car, fallback to driver defaults
+            COALESCE(rr.start_number, d.start_number) as start_number,
+            COALESCE(rr.car, d.car) as car,
+            rr.rank,
+            rr.points,
+            rr.championship_points,
+            d.name as driver_name,
+            d.team as driver_team
+        FROM race_results rr
+        JOIN classes c ON rr.class_id = c.id
+        JOIN drivers d ON rr.driver_id = d.id
+        WHERE rr.event_id = ?
+        ORDER BY c.name, rr.rank ASC
+    `;
+
+    db.all(query, [eventId], (err, rows) => {
+        if (err) {
+            res.status(400).json({ error: err.message });
+            return;
+        }
+        res.json(rows);
+    });
+});
+
+// GET /api/youtube-feed
+// Returns latest 3 videos from the configured channel
+app.get('/api/youtube-feed', async (req, res) => {
+    // TODO: Replace with actual Channel ID for @marc.ristau
+    // Try to find it via: https://www.youtube.com/@marc.ristau -> View Source -> "channelId"
+    const CHANNEL_ID = 'UCwDptcdlkqp4uWGXe7gGk1Q';
+    const FEED_URL = `https://www.youtube.com/feeds/videos.xml?channel_id=${CHANNEL_ID}`;
+    const parser = new Parser();
+
+    try {
+        const feed = await parser.parseURL(FEED_URL);
+        const videos = feed.items.slice(0, 3).map(item => ({
+            id: item.id.replace('yt:video:', ''),
+            title: item.title,
+            link: item.link,
+            thumbnail: `https://i.ytimg.com/vi/${item.id.replace('yt:video:', '')}/mqdefault.jpg`,
+            date: item.pubDate
+        }));
+        res.json(videos);
+    } catch (error) {
+        console.error("Error fetching YouTube feed:", error.message);
+        // Fallback mock data if feed fails (or ID is invalid)
+        res.json([
+            {
+                id: 'mock1',
+                title: 'Autocross Saison 2025 - Teaser (Placeholder)',
+                link: 'https://www.youtube.com/@marc.ristau',
+                thumbnail: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&q=80&w=800',
+                date: new Date().toISOString()
+            },
+            {
+                id: 'mock2',
+                title: 'Onboard Kamera - Finale (Placeholder)',
+                link: 'https://www.youtube.com/@marc.ristau',
+                thumbnail: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=800',
+                date: new Date().toISOString()
+            },
+            {
+                id: 'mock3',
+                title: 'Fahrerlager Tour (Placeholder)',
+                link: 'https://www.youtube.com/@marc.ristau',
+                thumbnail: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&q=80&w=800',
+                date: new Date().toISOString()
+            }
+        ]);
+    }
 });
 
 app.listen(PORT, () => {

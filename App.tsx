@@ -14,9 +14,11 @@ import { Driver, Event } from './types';
 import { Button } from './components/Button';
 import { MOCK_DRIVERS } from './constants';
 
+import { EventResults } from './pages/EventResults';
 
 const App: React.FC = () => {
   const [page, setPage] = useState('home');
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [contextString, setContextString] = useState('');
@@ -32,7 +34,6 @@ const App: React.FC = () => {
     }).catch(err => console.error("Failed to load context:", err));
   }, []);
 
-
   // Mock Login Handler
   const handleLogin = (isDriver: boolean) => {
     const mockUser: User = {
@@ -47,11 +48,17 @@ const App: React.FC = () => {
     setShowLoginModal(false);
   };
 
+  const handleSelectEvent = (eventId: string) => {
+    setSelectedEventId(eventId);
+    setPage('event-results');
+  };
+
   const renderPage = () => {
     switch (page) {
       case 'home': return <Home onNavigate={setPage} />;
       case 'drivers': return <Drivers />;
-      case 'events': return <Events />;
+      case 'events': return <Events onSelectEvent={handleSelectEvent} />;
+      case 'event-results': return selectedEventId ? <EventResults eventId={selectedEventId} onBack={() => setPage('events')} /> : <Events onSelectEvent={handleSelectEvent} />;
       case 'gallery': return <Gallery user={user} />;
       case 'admin': return <AdminResults />;
       case 'profile': return user ? <Profile user={user} driverData={MOCK_DRIVERS.find(d => d.id === user.driverId)} onLogout={() => { setUser(null); setPage('home'); }} onUpdate={setUser} /> : <Home onNavigate={setPage} />;

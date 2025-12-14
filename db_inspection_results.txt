@@ -1,0 +1,29 @@
+Query: SELECT name FROM sqlite_master WHERE type='table';
+('teams',)
+('team_memberships',)
+('photos',)
+('photo_driver_tags',)
+('videos',)
+('championships',)
+('classes',)
+('drivers',)
+('events',)
+('race_results',)
+('driver_participations',)
+--------------------
+Query: SELECT * FROM events LIMIT 5;
+('e1', 'DRCV', 'Dauborn', '2025-05-18', 'Dauborn', 'COMPLETED', None)
+('e2', 'DRCV', 'Gleidorf', '2025-06-22', 'Gleidorf', 'COMPLETED', None)
+('e4', 'DRCV', 'Herbern', '2025-08-17', 'Herbern', 'COMPLETED', None)
+('e5', 'DRCV', 'Osnabrück', '2025-09-07', 'Osnabrück', 'COMPLETED', None)
+('evt_e47a7e98', 'DRCV', 'Eppe 13.07.2025', '2025-07-13', 'Eppe', 'COMPLETED', None)
+--------------------
+Query: SELECT * FROM classes LIMIT 5;
+('d_lang', 'DRCV', 'Langstrecke')
+('d_k1', 'DRCV', 'Klasse 01')
+('d_k2', 'DRCV', 'Klasse 02')
+('d_k3', 'DRCV', 'Klasse 03')
+('d_k4', 'DRCV', 'Klasse 04')
+--------------------
+Query: SELECT name FROM sqlite_master WHERE type='table' AND name='class_events';
+--------------------

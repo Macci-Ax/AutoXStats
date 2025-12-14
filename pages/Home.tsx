@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Calendar, Flag, ChevronRight } from 'lucide-react';
+import { Trophy, Calendar, Flag, ChevronRight, Youtube, ExternalLink, Play, Car, Medal } from 'lucide-react';
 import { MOCK_ENTRIES, MOCK_EVENTS } from '../constants';
 import { Championship, LeaderboardEntry } from '../types';
 
@@ -12,6 +12,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   const recentEvents = MOCK_EVENTS.filter(e => e.status === 'COMPLETED').sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
 
   const [randomClassData, setRandomClassData] = useState<{ className: string, drivers: any[] } | null>(null);
+  const [videos, setVideos] = useState<any[]>([]);
 
   useEffect(() => {
     fetch('http://localhost:3000/api/leaderboard/random-class')
@@ -28,6 +29,12 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
         }
       })
       .catch(err => console.error("Failed to fetch random leaderboard", err));
+
+    // Fetch YouTube Videos
+    fetch('http://localhost:3000/api/youtube-feed')
+      .then(res => res.json())
+      .then(data => setVideos(data))
+      .catch(err => console.error("Failed to fetch YouTube feed:", err));
   }, []);
 
   // Simple logic to get top driver per championship based on mock points
@@ -87,19 +94,54 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                 </div>
                 <div className="grid grid-cols-1 gap-3">
                   {randomClassData.drivers.map((entry: LeaderboardEntry, index) => (
-                    <div key={entry.driver.id} className={`bg-slate-900/50 p-4 rounded-lg flex items-center gap-4 border ${index === 0 ? 'border-yellow-500/30 bg-yellow-900/10' : 'border-slate-700/50'} hover:border-red-500/50 transition cursor-pointer`} onClick={() => onNavigate('drivers')}>
-                      <div className="text-2xl font-black w-8 text-center" style={{ color: index === 0 ? '#fbbf24' : index === 1 ? '#94a3b8' : '#b45309' }}>
+                    <div key={entry.driver.id} className={`bg-slate-900/50 p-4 rounded-lg flex items-center gap-4 border ${index === 0 ? 'border-yellow-500/30 bg-yellow-900/10' : 'border-slate-700/50'} hover:border-red-500/50 transition cursor-pointer group`} onClick={() => onNavigate('drivers')}>
+                      {/* Rank */}
+                      <div className="text-2xl font-black w-8 text-center shrink-0" style={{ color: index === 0 ? '#fbbf24' : index === 1 ? '#94a3b8' : '#b45309' }}>
                         {index + 1}
                       </div>
-                      <div className="bg-slate-800 h-10 w-10 rounded-full flex items-center justify-center text-xs font-bold text-slate-400 border border-slate-600 overflow-hidden shrink-0">
+
+                      {/* Avatar */}
+                      <div className="bg-slate-800 h-12 w-12 rounded-full flex items-center justify-center text-xs font-bold text-slate-400 border border-slate-600 overflow-hidden shrink-0">
                         <img src={entry.driver.avatarUrl} alt={entry.driver.name} className="w-full h-full object-cover" />
                       </div>
+
+                      {/* Info: Name & Team */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-center mb-1">
-                          <h3 className="font-bold text-white truncate pr-2">{entry.driver.name}</h3>
-                          <span className="text-xs bg-slate-700 px-2 py-0.5 rounded text-white font-mono whitespace-nowrap">{entry.stats.points} Pkt</span>
+                        <h3 className="font-bold text-white truncate text-lg">{entry.driver.name}</h3>
+                        <p className="text-xs text-slate-400 truncate flex items-center gap-1">
+                          {entry.team ? entry.team.name : 'Privatfahrer'}
+                        </p>
+                      </div>
+
+                      {/* Car & Number (Hidden on mobile) */}
+                      <div className="hidden sm:flex flex-col items-end gap-1 text-right min-w-[100px]">
+                        <div className="text-xs font-bold text-slate-300 flex items-center gap-1.5 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                          <Car size={12} className="text-slate-500" />
+                          {entry.car || 'Fahrzeug N/A'}
                         </div>
-                        <p className="text-xs text-slate-400 truncate">{entry.team ? entry.team.name : ''}</p>
+                        <span className="text-[10px] text-slate-500 font-mono">#{entry.number}</span>
+                      </div>
+
+                      {/* Stats: Wins/Podiums (Hidden on mobile) */}
+                      <div className="hidden md:flex items-center gap-4 px-4 border-l border-slate-700/50">
+                        <div className="text-center">
+                          <div className="text-xs text-slate-500 uppercase mb-0.5">Wins</div>
+                          <div className="font-bold text-white flex items-center gap-1 justify-center">
+                            <Trophy size={12} className="text-yellow-500" /> {entry.stats.wins}
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xs text-slate-500 uppercase mb-0.5">Podiums</div>
+                          <div className="font-bold text-white flex items-center gap-1 justify-center">
+                            <Medal size={12} className="text-slate-400" /> {entry.stats.podiums}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Points */}
+                      <div className="text-right pl-2 border-l border-slate-700/50 sm:border-none min-w-[60px]">
+                        <span className="block text-xl font-black text-white leading-none">{entry.stats.points}</span>
+                        <span className="text-[10px] text-slate-500 uppercase font-bold">Punkte</span>
                       </div>
                     </div>
                   ))}
@@ -121,16 +163,39 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
               {recentEvents.map(event => {
                 const winnerEntry = MOCK_ENTRIES.find(e => e.driver.id === event.winnerId);
                 return (
-                  <div key={event.id} className="flex items-center justify-between p-3 bg-slate-900/30 rounded border-l-4 border-slate-600 hover:bg-slate-900/50 transition">
-                    <div>
-                      <div className="text-xs text-red-400 font-bold mb-0.5">{event.championship}</div>
-                      <div className="font-semibold text-white">{event.name}</div>
-                      <div className="text-xs text-slate-500">{event.location} • {new Date(event.date).toLocaleDateString('de-DE')}</div>
+                  <div key={event.id} className="group relative flex items-center justify-between p-4 bg-slate-900/40 rounded-lg border border-slate-700/50 hover:bg-slate-800 transition hover:border-slate-600">
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-slate-600 to-slate-800 rounded-l group-hover:from-red-600 group-hover:to-red-800 transition-all"></div>
+
+                    {/* Left: Event Info */}
+                    <div className="pl-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-black bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded uppercase tracking-wider group-hover:bg-red-900/30 group-hover:text-red-400 transition">{event.championship}</span>
+                        <span className="text-xs text-slate-500 font-mono">{new Date(event.date).toLocaleDateString('de-DE')}</span>
+                      </div>
+                      <div className="font-bold text-slate-200 group-hover:text-white transition">{event.name}</div>
+                      <div className="text-xs text-slate-500 flex items-center gap-1">
+                        <Flag size={10} /> {event.location}
+                      </div>
                     </div>
+
+                    {/* Right: Winner Info */}
                     {winnerEntry && (
-                      <div className="text-right">
-                        <div className="text-xs text-slate-400 uppercase">Sieger</div>
-                        <div className="font-medium text-white">{winnerEntry.driver.name}</div>
+                      <div className="flex items-center gap-3 text-right">
+                        <div className="hidden sm:block">
+                          <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-0.5">Gewinner</div>
+                          <div className="font-bold text-white text-sm">{winnerEntry.driver.name}</div>
+                          <div className="text-xs text-slate-400 flex items-center gap-1 justify-end">
+                            {winnerEntry.car && <><Car size={10} className="text-slate-600" /> {winnerEntry.car}</>}
+                          </div>
+                        </div>
+                        <div className="relative">
+                          <img
+                            src={winnerEntry.driver.avatarUrl}
+                            alt={winnerEntry.driver.name}
+                            className="w-10 h-10 rounded-full border-2 border-slate-700 object-cover group-hover:border-yellow-500/50 transition"
+                          />
+                          <div className="absolute -top-1 -right-1 bg-yellow-500 text-black text-[8px] font-bold px-1 rounded-full shadow-sm">1</div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -169,6 +234,52 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
             </div>
           </div>
 
+          {/* YouTube Feed */}
+          <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-lg">
+            <h2 className="text-xl font-bold flex items-center gap-2 mb-4 text-white">
+              <Youtube className="text-red-600" /> Neues auf YouTube
+            </h2>
+            <div className="space-y-4 mb-4">
+              {videos.length > 0 ? videos.map((video) => (
+                <a
+                  key={video.id}
+                  href={video.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex gap-3 items-start group hover:bg-slate-700/50 p-2 rounded transition"
+                >
+                  <div className="relative w-24 h-16 shrink-0 rounded overflow-hidden">
+                    <img src={video.thumbnail} alt={video.title} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/10 transition">
+                      <div className="w-8 h-8 bg-black/50 backdrop-blur rounded-full flex items-center justify-center border border-white/20 group-hover:bg-red-600 group-hover:border-red-500 transition-all duration-300">
+                        <Play size={14} className="text-white fill-white ml-0.5" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold text-slate-200 leading-tight group-hover:text-red-500 transition line-clamp-2 mb-1">
+                      {video.title}
+                    </h3>
+                    <div className="flex items-center gap-1 text-xs text-slate-500">
+                      <span>{new Date(video.date).toLocaleDateString()}</span>
+                      <ExternalLink size={10} />
+                    </div>
+                  </div>
+                </a>
+              )) : (
+                <div className="text-slate-500 text-sm text-center py-4">Lade Videos...</div>
+              )}
+            </div>
+            <a
+              href="https://www.youtube.com/@marc.ristau"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded text-sm font-bold transition flex items-center justify-center gap-2"
+            >
+              Zum Kanal <ExternalLink size={14} />
+            </a>
+          </div>
+
           <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
             <h3 className="font-bold text-white mb-2">Du fährst selbst?</h3>
             <p className="text-sm text-slate-400 mb-4">Registriere dich jetzt, um dein Fahrerprofil zu bearbeiten und deine eigenen Sponsoren zu präsentieren.</p>
@@ -178,6 +289,6 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           </div>
         </div>
       </div>
-    </div >
+    </div>
   );
 };
