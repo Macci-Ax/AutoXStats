@@ -17,11 +17,16 @@ console.log(`Datenbank erstellt unter: ${dbPath}`);
 const schema = `
   PRAGMA foreign_keys = OFF;
   DROP TABLE IF EXISTS driver_participations;
+  DROP TABLE IF EXISTS class_events;
   DROP TABLE IF EXISTS race_results;
+  DROP TABLE IF EXISTS championship_events;
+  DROP TABLE IF EXISTS physical_events;
   DROP TABLE IF EXISTS events;
   DROP TABLE IF EXISTS drivers;
   DROP TABLE IF EXISTS classes;
   DROP TABLE IF EXISTS championships;
+  DROP TABLE IF EXISTS photos;
+  DROP TABLE IF EXISTS photo_tags;
   PRAGMA foreign_keys = ON;
 
   CREATE TABLE championships (
@@ -55,20 +60,31 @@ const schema = `
       FOREIGN KEY (current_class_id) REFERENCES classes(id)
   );
 
-  CREATE TABLE events (
+  -- NEW: Physical Events (represents real-world race weekends)
+  CREATE TABLE physical_events (
       id TEXT PRIMARY KEY,
-      championship_id TEXT,
-      name TEXT NOT NULL,
-      date TEXT NOT NULL,
+      title TEXT NOT NULL,
+      start_date TEXT NOT NULL,
+      end_date TEXT,
       location TEXT,
-      status TEXT,
-      winner_driver_id TEXT,
-      FOREIGN KEY (championship_id) REFERENCES championships(id)
+      description TEXT,
+      status TEXT DEFAULT 'upcoming'
+  );
+
+  -- NEW: Championship Events (links championships to physical events)
+  CREATE TABLE championship_events (
+      id TEXT PRIMARY KEY,
+      physical_event_id TEXT NOT NULL,
+      championship_id TEXT NOT NULL,
+      has_results INTEGER DEFAULT 0,
+      FOREIGN KEY (physical_event_id) REFERENCES physical_events(id),
+      FOREIGN KEY (championship_id) REFERENCES championships(id),
+      UNIQUE(physical_event_id, championship_id)
   );
 
   CREATE TABLE race_results (
       id TEXT PRIMARY KEY,
-      event_id TEXT,
+      championship_event_id TEXT,
       driver_id TEXT,
       class_id TEXT,
       rank INTEGER,
@@ -81,7 +97,7 @@ const schema = `
       reconstructed INTEGER DEFAULT 0,
       license_type TEXT DEFAULT 'DRCV',
       championship_points INTEGER DEFAULT 0,
-      FOREIGN KEY (event_id) REFERENCES events(id),
+      FOREIGN KEY (championship_event_id) REFERENCES championship_events(id),
       FOREIGN KEY (driver_id) REFERENCES drivers(id),
       FOREIGN KEY (class_id) REFERENCES classes(id)
   );
@@ -96,6 +112,32 @@ const schema = `
       PRIMARY KEY (driver_id, class_id),
       FOREIGN KEY (driver_id) REFERENCES drivers(id),
       FOREIGN KEY (class_id) REFERENCES classes(id)
+  );
+
+  CREATE TABLE class_events (
+      class_id TEXT,
+      championship_event_id TEXT,
+      discipline TEXT DEFAULT 'klasse',
+      PRIMARY KEY (class_id, championship_event_id),
+      FOREIGN KEY (class_id) REFERENCES classes(id),
+      FOREIGN KEY (championship_event_id) REFERENCES championship_events(id)
+  );
+
+  CREATE TABLE photos (
+      id TEXT PRIMARY KEY,
+      physical_event_id TEXT,
+      storage_path TEXT NOT NULL,
+      photographer TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (physical_event_id) REFERENCES physical_events(id)
+  );
+
+  CREATE TABLE photo_tags (
+      id TEXT PRIMARY KEY,
+      photo_id TEXT,
+      driver_id TEXT,
+      FOREIGN KEY (photo_id) REFERENCES photos(id),
+      FOREIGN KEY (driver_id) REFERENCES drivers(id)
   );
 `;
 
@@ -149,13 +191,23 @@ const classesData = [
 
 const driversData = [];
 
-const eventsData = [
-  { id: 'e1', champ: 'DRCV', name: 'Dauborn', date: '2025-05-18', loc: 'Dauborn', status: 'COMPLETED' },
-  { id: 'e2', champ: 'DRCV', name: 'Gleidorf', date: '2025-06-22', loc: 'Gleidorf', status: 'COMPLETED' },
-  { id: 'e3', champ: 'WACV', name: 'WACV Lauf 1 - Waldorf', date: '2025-05-04', loc: 'Waldorf', status: 'COMPLETED' },
-  { id: 'e4', champ: 'DRCV', name: 'Herbern', date: '2025-08-17', loc: 'Herbern', status: 'COMPLETED' },
-  { id: 'e5', champ: 'DRCV', name: 'Osnabrück', date: '2025-09-07', loc: 'Osnabrück', status: 'COMPLETED' },
-  { id: 'e6', champ: 'DRCV', name: 'Saisonfinale Itterbeck', date: '2025-09-28', loc: 'Itterbeck', status: 'UPCOMING' }
+// Updated: Physical Events and Championship Events data
+const physicalEventsData = [
+  { id: 'pe_e1', title: 'Dauborn', date: '2025-05-18', loc: 'Dauborn', status: 'finished' },
+  { id: 'pe_e2', title: 'Gleidorf', date: '2025-06-22', loc: 'Gleidorf', status: 'finished' },
+  { id: 'pe_e3', title: 'WACV Lauf 1 - Waldorf', date: '2025-05-04', loc: 'Waldorf', status: 'finished' },
+  { id: 'pe_e4', title: 'Herbern', date: '2025-08-17', loc: 'Herbern', status: 'finished' },
+  { id: 'pe_e5', title: 'Osnabrück', date: '2025-09-07', loc: 'Osnabrück', status: 'finished' },
+  { id: 'pe_e6', title: 'Saisonfinale Itterbeck', date: '2025-09-28', loc: 'Itterbeck', status: 'upcoming' }
+];
+
+const championshipEventsData = [
+  { id: 'ce_e1', physical_event_id: 'pe_e1', champ: 'DRCV', has_results: 1 },
+  { id: 'ce_e2', physical_event_id: 'pe_e2', champ: 'DRCV', has_results: 1 },
+  { id: 'ce_e3', physical_event_id: 'pe_e3', champ: 'WACV', has_results: 1 },
+  { id: 'ce_e4', physical_event_id: 'pe_e4', champ: 'DRCV', has_results: 1 },
+  { id: 'ce_e5', physical_event_id: 'pe_e5', champ: 'DRCV', has_results: 1 },
+  { id: 'ce_e6', physical_event_id: 'pe_e6', champ: 'DRCV', has_results: 0 }
 ];
 
 // 4. Einfügen der Daten
@@ -164,15 +216,18 @@ const insertChamp = db.prepare('INSERT OR REPLACE INTO championships (id, name, 
 const insertClass = db.prepare('INSERT OR REPLACE INTO classes (id, championship_id, name) VALUES (?, ?, ?)');
 const insertDriver = db.prepare('INSERT OR REPLACE INTO drivers (id, name, team, car, start_number, current_class_id, points, season_rank, wins, second_places, third_places, heat_wins, podiums) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
 const insertParticipation = db.prepare('INSERT OR REPLACE INTO driver_participations (driver_id, class_id, points) VALUES (?, ?, ?)');
-const insertEvent = db.prepare('INSERT OR REPLACE INTO events (id, championship_id, name, date, location, status) VALUES (?, ?, ?, ?, ?, ?)');
+const insertPhysicalEvent = db.prepare('INSERT OR REPLACE INTO physical_events (id, title, start_date, end_date, location, status) VALUES (?, ?, ?, ?, ?, ?)');
+const insertChampionshipEvent = db.prepare('INSERT OR REPLACE INTO championship_events (id, physical_event_id, championship_id, has_results) VALUES (?, ?, ?, ?)');
 
 const transaction = db.transaction(() => {
   for (const champ of championships) insertChamp.run(champ.id, champ.name, champ.year);
   for (const cls of classesData) insertClass.run(cls.id, cls.champ, cls.name);
   for (const drv of driversData) insertDriver.run(drv.id, drv.name, drv.team, drv.car, drv.number, drv.classId, drv.points, drv.rank, drv.wins, drv.sec, drv.thi, drv.heat, drv.pod);
-  for (const evt of eventsData) insertEvent.run(evt.id, evt.champ, evt.name, evt.date, evt.loc, evt.status);
+  for (const evt of physicalEventsData) insertPhysicalEvent.run(evt.id, evt.title, evt.date, evt.date, evt.loc, evt.status);
+  for (const ce of championshipEventsData) insertChampionshipEvent.run(ce.id, ce.physical_event_id, ce.champ, ce.has_results);
 });
 
 transaction();
 console.log('Datenbank erfolgreich befüllt!');
 db.close();
+

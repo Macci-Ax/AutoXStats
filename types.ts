@@ -61,6 +61,26 @@ export interface Event {
   winnerId?: string;
 }
 
+// NEW: Physical Event represents a real-world race weekend
+export interface PhysicalEvent {
+  id: string;
+  title: string;
+  startDate: string;
+  endDate?: string;
+  location: string;
+  description?: string;
+  status: 'upcoming' | 'running' | 'finished';
+  championshipEvents: ChampionshipEvent[];
+}
+
+// NEW: Championship Event links a championship to a physical event
+export interface ChampionshipEvent {
+  id: string;
+  physicalEventId: string;
+  championshipId: Championship;
+  hasResults: boolean;
+}
+
 export interface PhotoTag {
   id: string;
   driverId: string;

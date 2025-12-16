@@ -6,6 +6,7 @@ import { Events } from './pages/Events';
 import { Gallery } from './pages/Gallery';
 import { Profile } from './pages/Profile';
 import AdminResults from './pages/AdminResults';
+import AdminEvents from './pages/AdminEvents';
 import { ChatAssistant } from './components/ChatAssistant';
 import Login from './pages/Login';
 import { User } from './types';
@@ -55,6 +56,10 @@ const App: React.FC = () => {
         // Auth Protection for Admin
         if (!user || user.role !== 'ADMIN') return <Login onNavigate={navigate} />;
         return <AdminResults />;
+      case 'admin-events':
+        // Auth Protection for Admin Events
+        if (!user || user.role !== 'ADMIN') return <Login onNavigate={navigate} />;
+        return <AdminEvents />;
       case 'login': return <Login onNavigate={navigate} />;
       case 'profile': return user ? <Profile user={user} driverData={MOCK_DRIVERS.find(d => d.id === user.driverId)} onLogout={() => { /* Logout handled by context usually or component */ setPage('home'); }} onUpdate={() => { }} /> : <Home onNavigate={navigate} />;
       default: return <Home onNavigate={navigate} />;

@@ -141,10 +141,11 @@ app.get('/', (req, res) => {
 // Returns all years for which data exists, sorted descending
 app.get('/api/years', (req, res) => {
     const query = `
-        SELECT DISTINCT strftime('%Y', e.date) as year
-        FROM events e
-        JOIN race_results rr ON e.id = rr.event_id
-        WHERE e.date IS NOT NULL
+        SELECT DISTINCT strftime('%Y', pe.start_date) as year
+        FROM physical_events pe
+        JOIN championship_events ce ON pe.id = ce.physical_event_id
+        JOIN race_results rr ON ce.id = rr.championship_event_id
+        WHERE pe.start_date IS NOT NULL
         ORDER BY year DESC
     `;
 
@@ -171,10 +172,11 @@ app.get('/api/drivers', (req, res) => {
 
     // 1. Fetch Class Events (The Rules)
     const rulesQuery = `
-        SELECT class_id, event_id, discipline 
-        FROM class_events 
-        JOIN events e ON class_events.event_id = e.id
-        WHERE strftime('%Y', e.date) = ?
+        SELECT cle.class_id, cle.championship_event_id, cle.discipline 
+        FROM class_events cle
+        JOIN championship_events ce ON cle.championship_event_id = ce.id
+        JOIN physical_events pe ON ce.physical_event_id = pe.id
+        WHERE strftime('%Y', pe.start_date) = ?
     `;
 
     // 2. Fetch All Results (The Data)
@@ -187,12 +189,12 @@ app.get('/api/drivers', (req, res) => {
             d.start_number as number, 
             d.bio,
             d.heat_wins as static_heat,
-            dp.points as static_points, -- Fallback for manual points
+            dp.points as static_points,
             dp.class_id,
             c.name as driverClass,
             c.championship_id as champ_id,
             r.id as result_id,
-            r.event_id,
+            r.championship_event_id,
             r.championship_points,
             r.rank,
             r.heat_wins as race_heat_wins
@@ -200,8 +202,9 @@ app.get('/api/drivers', (req, res) => {
         JOIN driver_participations dp ON d.id = dp.driver_id
         JOIN classes c ON dp.class_id = c.id
         LEFT JOIN race_results r ON d.id = r.driver_id AND dp.class_id = r.class_id
-        LEFT JOIN events e ON r.event_id = e.id
-        WHERE (e.id IS NULL OR strftime('%Y', e.date) = ?)
+        LEFT JOIN championship_events ce ON r.championship_event_id = ce.id
+        LEFT JOIN physical_events pe ON ce.physical_event_id = pe.id
+        WHERE (pe.id IS NULL OR strftime('%Y', pe.start_date) = ?)
     `;
 
     db.all(rulesQuery, [year], (err, rulesRows) => {
@@ -216,7 +219,7 @@ app.get('/api/drivers', (req, res) => {
             if (!classRules[r.class_id]) {
                 classRules[r.class_id] = { discipline: r.discipline, validEvents: new Set() };
             }
-            classRules[r.class_id].validEvents.add(r.event_id);
+            classRules[r.class_id].validEvents.add(r.championship_event_id);
         });
 
         db.all(dataQuery, [year], (err, dataRows) => {
@@ -246,9 +249,9 @@ app.get('/api/drivers', (req, res) => {
                         results: []
                     };
                 }
-                if (row.result_id) { // If they have a result
+                if (row.result_id) {
                     driverMap[key].results.push({
-                        event_id: row.event_id,
+                        championship_event_id: row.championship_event_id,
                         points: row.championship_points || 0,
                         rank: row.rank,
                         heat_wins: row.race_heat_wins || 0
@@ -263,15 +266,12 @@ app.get('/api/drivers', (req, res) => {
                 const discipline = rules ? rules.discipline : 'unknown';
 
                 // Filter results to only valid events for this class
-                const validResults = d.results.filter(r => validEventIds.has(r.event_id));
+                const validResults = d.results.filter(r => validEventIds.has(r.championship_event_id));
 
-                // Determine missing events (did not participate) -> 0 points
-                // Actually, for Streicher logic, we just take the list of ALL valid events for the class,
-                // map the driver's points (0 if missing), and then drop.
-
+                // For Streicher logic: take all valid events, map points, then drop
                 const allEventScores = [];
-                validEventIds.forEach(eventId => {
-                    const res = validResults.find(r => r.event_id === eventId);
+                validEventIds.forEach(champEventId => {
+                    const res = validResults.find(r => r.championship_event_id === champEventId);
                     allEventScores.push(res ? res.points : 0);
                 });
 
@@ -467,14 +467,25 @@ app.get('/api/drivers/:id/results', (req, res) => {
 });
 
 // GET /api/events
+// Returns physical events with their championship events
 // Query params: ?year=YYYY (optional, defaults to current year)
 app.get('/api/events', (req, res) => {
     const year = req.query.year || String(new Date().getFullYear());
     const query = `
-        SELECT e.id, e.championship_id as championship, e.name, e.date, e.location, e.status
-        FROM events e
-        WHERE strftime('%Y', e.date) = ?
-        ORDER BY e.date
+        SELECT 
+            pe.id,
+            pe.title as name,
+            pe.start_date as date,
+            pe.location,
+            pe.status,
+            pe.description,
+            ce.id as championship_event_id,
+            ce.championship_id as championship,
+            ce.has_results
+        FROM physical_events pe
+        LEFT JOIN championship_events ce ON pe.id = ce.physical_event_id
+        WHERE strftime('%Y', pe.start_date) = ?
+        ORDER BY pe.start_date, ce.championship_id
     `;
 
     db.all(query, [year], (err, rows) => {
@@ -482,7 +493,38 @@ app.get('/api/events', (req, res) => {
             res.status(400).json({ error: err.message });
             return;
         }
-        res.json(rows);
+
+        // Group by physical event
+        const eventsMap = {};
+        rows.forEach(row => {
+            if (!eventsMap[row.id]) {
+                eventsMap[row.id] = {
+                    id: row.id,
+                    name: row.name,
+                    date: row.date,
+                    location: row.location,
+                    status: row.status === 'finished' ? 'COMPLETED' :
+                        row.status === 'running' ? 'LIVE' : 'UPCOMING',
+                    description: row.description,
+                    championships: []
+                };
+            }
+            if (row.championship_event_id) {
+                eventsMap[row.id].championships.push({
+                    championshipEventId: row.championship_event_id,
+                    championship: row.championship,
+                    hasResults: row.has_results === 1
+                });
+            }
+        });
+
+        // For backwards compatibility, also include 'championship' as first championship
+        const events = Object.values(eventsMap).map(e => ({
+            ...e,
+            championship: e.championships.length > 0 ? e.championships[0].championship : null
+        }));
+
+        res.json(events);
     });
 });
 
@@ -615,29 +657,44 @@ app.put('/api/results/:id', requireAdmin, (req, res) => {
     });
 });
 
+// GET /api/events/:id/results
+// Supports both physical_event_id (returns all results) and championship filtering
+// Query params: ?championship=DRCV (optional, filters by championship)
 app.get('/api/events/:id/results', (req, res) => {
     const eventId = req.params.id;
-    const query = `
+    const championship = req.query.championship;
+
+    let query = `
         SELECT 
             rr.id,
             rr.class_id,
             c.name as class_name,
-            -- Prioritize result-specific start number and car, fallback to driver defaults
             COALESCE(rr.start_number, d.start_number) as start_number,
             COALESCE(rr.car, d.car) as car,
             rr.rank,
             rr.points,
             rr.championship_points,
             d.name as driver_name,
-            d.team as driver_team
+            d.team as driver_team,
+            ce.championship_id as championship
         FROM race_results rr
+        JOIN championship_events ce ON rr.championship_event_id = ce.id
+        JOIN physical_events pe ON ce.physical_event_id = pe.id
         JOIN classes c ON rr.class_id = c.id
         JOIN drivers d ON rr.driver_id = d.id
-        WHERE rr.event_id = ?
-        ORDER BY c.name, rr.rank ASC
+        WHERE pe.id = ?
     `;
 
-    db.all(query, [eventId], (err, rows) => {
+    const params = [eventId];
+
+    if (championship) {
+        query += ` AND ce.championship_id = ?`;
+        params.push(championship);
+    }
+
+    query += ` ORDER BY c.name, rr.rank ASC`;
+
+    db.all(query, params, (err, rows) => {
         if (err) {
             res.status(400).json({ error: err.message });
             return;
@@ -746,19 +803,19 @@ app.post('/api/photos', upload.array('photos'), (req, res) => {
 });
 
 // GET /api/gallery/events
-// Returns events that have photos, with count and latest photo as cover
+// Returns physical events that have photos, with count and latest photo as cover
 app.get('/api/gallery/events', (req, res) => {
     const query = `
         SELECT 
-            e.id, 
-            e.name, 
-            e.date, 
+            pe.id, 
+            pe.title as name, 
+            pe.start_date as date, 
             COUNT(p.id) as photo_count,
-            (SELECT storage_path FROM photos p2 WHERE p2.event_id = e.id ORDER BY p2.created_at DESC LIMIT 1) as cover_url
-        FROM events e
-        JOIN photos p ON e.id = p.event_id
-        GROUP BY e.id
-        ORDER BY e.date DESC
+            (SELECT storage_path FROM photos p2 WHERE p2.physical_event_id = pe.id ORDER BY p2.created_at DESC LIMIT 1) as cover_url
+        FROM physical_events pe
+        JOIN photos p ON pe.id = p.physical_event_id
+        GROUP BY pe.id
+        ORDER BY pe.start_date DESC
     `;
 
     db.all(query, [], (err, rows) => {
@@ -783,7 +840,7 @@ app.get('/api/photos', (req, res) => {
     `;
     const params = [];
     if (eventId) {
-        query += " WHERE p.event_id = ?";
+        query += " WHERE p.physical_event_id = ?";
         params.push(eventId);
     }
     query += " GROUP BY p.id ORDER BY p.created_at DESC";
@@ -807,11 +864,11 @@ app.get('/api/photos', (req, res) => {
             }
             return {
                 id: r.id,
-                url: r.storage_path, // Mapping 'storage_path' to 'url'
-                eventId: r.event_id,
+                url: r.storage_path,
+                eventId: r.physical_event_id,
                 photographer: r.photographer || 'Gast',
                 uploadDate: r.created_at,
-                highResAvailable: true, // Default true for local uploads
+                highResAvailable: true,
                 tags: tags
             };
         });
@@ -871,6 +928,200 @@ app.get('/api/drivers/:id/photos', (req, res) => {
             highResAvailable: true
         }));
         res.json(photos);
+    });
+});
+// ============================================
+// ADMIN EVENT MANAGEMENT ENDPOINTS
+// ============================================
+
+// GET /api/admin/physical-events
+// Returns all physical events for admin management
+app.get('/api/admin/physical-events', requireAdmin, (req, res) => {
+    const query = `
+        SELECT 
+            pe.*,
+            GROUP_CONCAT(ce.id || '::' || ce.championship_id || '::' || ce.has_results, '||') as champ_events_raw
+        FROM physical_events pe
+        LEFT JOIN championship_events ce ON pe.id = ce.physical_event_id
+        GROUP BY pe.id
+        ORDER BY pe.start_date DESC
+    `;
+
+    db.all(query, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        const events = rows.map(pe => {
+            const championships = [];
+            if (pe.champ_events_raw) {
+                pe.champ_events_raw.split('||').forEach((ce) => {
+                    const [id, champId, hasResults] = ce.split('::');
+                    championships.push({ id, championshipId: champId, hasResults: hasResults === '1' });
+                });
+            }
+            return {
+                id: pe.id,
+                title: pe.title,
+                startDate: pe.start_date,
+                endDate: pe.end_date,
+                location: pe.location,
+                description: pe.description,
+                status: pe.status,
+                championships
+            };
+        });
+        res.json(events);
+    });
+});
+
+// POST /api/admin/physical-events
+// Create a new physical event
+app.post('/api/admin/physical-events', requireAdmin, (req, res) => {
+    const { title, startDate, endDate, location, description, status, championships } = req.body;
+
+    if (!title || !startDate) {
+        return res.status(400).json({ error: "Title and startDate are required" });
+    }
+
+    const physicalId = 'pe_' + Date.now();
+
+    db.run(
+        `INSERT INTO physical_events (id, title, start_date, end_date, location, description, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [physicalId, title, startDate, endDate || startDate, location || '', description || '', status || 'upcoming'],
+        function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+
+            // Add championship events if provided
+            if (championships && Array.isArray(championships)) {
+                championships.forEach((champ) => {
+                    const ceId = 'ce_' + Date.now() + '_' + Math.round(Math.random() * 1000);
+                    db.run(
+                        `INSERT INTO championship_events (id, physical_event_id, championship_id, has_results)
+                         VALUES (?, ?, ?, ?)`,
+                        [ceId, physicalId, champ.championshipId, champ.hasResults ? 1 : 0]
+                    );
+                });
+            }
+
+            res.json({
+                message: "Event created successfully",
+                eventId: physicalId
+            });
+        }
+    );
+});
+
+// PUT /api/admin/physical-events/:id
+// Update a physical event
+app.put('/api/admin/physical-events/:id', requireAdmin, (req, res) => {
+    const { id } = req.params;
+    const { title, startDate, endDate, location, description, status } = req.body;
+
+    db.run(
+        `UPDATE physical_events 
+         SET title = ?, start_date = ?, end_date = ?, location = ?, description = ?, status = ?
+         WHERE id = ?`,
+        [title, startDate, endDate, location, description, status, id],
+        function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            if (this.changes === 0) return res.status(404).json({ error: "Event not found" });
+            res.json({ message: "Event updated successfully" });
+        }
+    );
+});
+
+// DELETE /api/admin/physical-events/:id
+// Delete a physical event (only if no results attached)
+app.delete('/api/admin/physical-events/:id', requireAdmin, (req, res) => {
+    const { id } = req.params;
+
+    // Check for results first
+    db.get(
+        `SELECT COUNT(*) as count FROM race_results rr
+         JOIN championship_events ce ON rr.championship_event_id = ce.id
+         WHERE ce.physical_event_id = ?`,
+        [id],
+        (err, row) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (row.count > 0) {
+                return res.status(400).json({
+                    error: "Cannot delete event with existing results",
+                    resultCount: row.count
+                });
+            }
+
+            // Delete championship_events first, then physical_event
+            db.run(`DELETE FROM championship_events WHERE physical_event_id = ?`, [id], (err) => {
+                if (err) return res.status(500).json({ error: err.message });
+
+                db.run(`DELETE FROM physical_events WHERE id = ?`, [id], function (err) {
+                    if (err) return res.status(500).json({ error: err.message });
+                    res.json({ message: "Event deleted successfully" });
+                });
+            });
+        }
+    );
+});
+
+// POST /api/admin/championship-events
+// Add a championship to an existing physical event
+app.post('/api/admin/championship-events', requireAdmin, (req, res) => {
+    const { physicalEventId, championshipId, hasResults } = req.body;
+
+    if (!physicalEventId || !championshipId) {
+        return res.status(400).json({ error: "physicalEventId and championshipId are required" });
+    }
+
+    const ceId = 'ce_' + Date.now() + '_' + Math.round(Math.random() * 1000);
+
+    db.run(
+        `INSERT INTO championship_events (id, physical_event_id, championship_id, has_results)
+         VALUES (?, ?, ?, ?)`,
+        [ceId, physicalEventId, championshipId, hasResults ? 1 : 0],
+        function (err) {
+            if (err) {
+                if (err.message.includes('UNIQUE')) {
+                    return res.status(400).json({ error: "This championship is already attached to this event" });
+                }
+                return res.status(500).json({ error: err.message });
+            }
+            res.json({ message: "Championship added successfully", championshipEventId: ceId });
+        }
+    );
+});
+
+// DELETE /api/admin/championship-events/:id
+// Remove a championship from a physical event
+app.delete('/api/admin/championship-events/:id', requireAdmin, (req, res) => {
+    const { id } = req.params;
+
+    // Check for results first
+    db.get(
+        `SELECT COUNT(*) as count FROM race_results WHERE championship_event_id = ?`,
+        [id],
+        (err, row) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (row.count > 0) {
+                return res.status(400).json({
+                    error: "Cannot remove championship with existing results",
+                    resultCount: row.count
+                });
+            }
+
+            db.run(`DELETE FROM championship_events WHERE id = ?`, [id], function (err) {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ message: "Championship removed successfully" });
+            });
+        }
+    );
+});
+
+// GET /api/admin/championships
+// Returns list of available championships
+app.get('/api/admin/championships', (req, res) => {
+    db.all('SELECT * FROM championships ORDER BY name', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
     });
 });
 

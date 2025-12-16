@@ -2,6 +2,18 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Trophy, Medal, Car } from 'lucide-react';
 
+interface ChampionshipInfo {
+    championshipEventId: string;
+    championship: string;
+    hasResults: boolean;
+}
+
+interface EventInfo {
+    id: string;
+    name: string;
+    championships: ChampionshipInfo[];
+}
+
 interface Result {
     id: string;
     class_id: string;
@@ -12,7 +24,8 @@ interface Result {
     points: number;
     championship_points: number;
     driver_name: string;
-    driver_team?: string; // New field
+    driver_team?: string;
+    championship?: string;
 }
 
 interface EventResultsProps {
@@ -23,17 +36,34 @@ interface EventResultsProps {
 export const EventResults: React.FC<EventResultsProps> = ({ eventId, onBack }) => {
     const [results, setResults] = useState<Result[]>([]);
     const [loading, setLoading] = useState(true);
-    const [eventName, setEventName] = useState('');
+    const [eventInfo, setEventInfo] = useState<EventInfo | null>(null);
+    const [selectedChampionship, setSelectedChampionship] = useState<string | null>(null);
 
     useEffect(() => {
+        // Fetch event info including championships
         fetch('http://localhost:3000/api/events')
             .then(res => res.json())
             .then(events => {
                 const evt = events.find((e: any) => e.id === eventId);
-                if (evt) setEventName(evt.name);
+                if (evt) {
+                    setEventInfo(evt);
+                    // Auto-select first championship with results
+                    if (evt.championships && evt.championships.length > 0) {
+                        const champWithResults = evt.championships.find((c: ChampionshipInfo) => c.hasResults);
+                        setSelectedChampionship(champWithResults?.championship || evt.championships[0].championship);
+                    }
+                }
             });
+    }, [eventId]);
 
-        fetch(`http://localhost:3000/api/events/${eventId}/results`)
+    useEffect(() => {
+        // Fetch results, optionally filtered by championship
+        let url = `http://localhost:3000/api/events/${eventId}/results`;
+        if (selectedChampionship) {
+            url += `?championship=${selectedChampionship}`;
+        }
+
+        fetch(url)
             .then(res => res.json())
             .then(data => {
                 setResults(data);
@@ -43,7 +73,7 @@ export const EventResults: React.FC<EventResultsProps> = ({ eventId, onBack }) =
                 console.error("Failed to load results:", err);
                 setLoading(false);
             });
-    }, [eventId]);
+    }, [eventId, selectedChampionship]);
 
     const groupedResults = results.reduce((acc, result) => {
         if (!acc[result.class_name]) {
@@ -64,12 +94,15 @@ export const EventResults: React.FC<EventResultsProps> = ({ eventId, onBack }) =
         return <span className="font-bold text-slate-500 w-5 text-center">{rank}.</span>;
     };
 
-    // Helper for consistency: mock avatar
-    // Ideally the API should return this, but for now we generate it deterministically
     const getAvatar = (name: string) => {
-        const id = name.length; // simple hash
+        const id = name.length;
         return `https://picsum.photos/200/200?random=${id}`;
     };
+
+    const isJointEvent = eventInfo?.championships && eventInfo.championships.length > 1;
+    const selectedChampHasResults = eventInfo?.championships?.find(
+        c => c.championship === selectedChampionship
+    )?.hasResults;
 
     if (loading) return <div className="text-center text-white py-12">Lade Ergebnisse...</div>;
 
@@ -83,13 +116,39 @@ export const EventResults: React.FC<EventResultsProps> = ({ eventId, onBack }) =
                 Zurück zum Kalender
             </button>
 
-            <h1 className="text-3xl font-bold text-white">Ergebnisse: {eventName}</h1>
+            <h1 className="text-3xl font-bold text-white">Ergebnisse: {eventInfo?.name}</h1>
 
-            {results.length === 0 ? (
+            {/* Championship Tabs for Joint Events */}
+            {isJointEvent && eventInfo?.championships && (
+                <div className="flex flex-wrap gap-2">
+                    {eventInfo.championships.map(champ => (
+                        <button
+                            key={champ.championshipEventId}
+                            onClick={() => setSelectedChampionship(champ.championship)}
+                            className={`px-4 py-2 rounded-lg font-medium transition ${selectedChampionship === champ.championship
+                                    ? 'bg-red-600 text-white'
+                                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                } ${!champ.hasResults ? 'opacity-50' : ''}`}
+                        >
+                            {champ.championship}
+                            {!champ.hasResults && <span className="ml-1 text-xs">(keine Daten)</span>}
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* No results message */}
+            {selectedChampHasResults === false && (
+                <div className="bg-slate-800 p-8 rounded-xl border border-slate-700 text-center text-slate-400">
+                    Keine Ergebnisse für {selectedChampionship} bei diesem Event erfasst.
+                </div>
+            )}
+
+            {results.length === 0 && selectedChampHasResults !== false ? (
                 <div className="bg-slate-800 p-8 rounded-xl border border-slate-700 text-center text-slate-400">
                     Noch keine Ergebnisse verfügbar.
                 </div>
-            ) : (
+            ) : results.length > 0 && (
                 <div className="grid gap-8">
                     {sortedClassNames.map(className => (
                         <div key={className} className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-lg">
@@ -144,3 +203,4 @@ export const EventResults: React.FC<EventResultsProps> = ({ eventId, onBack }) =
         </div>
     );
 };
+

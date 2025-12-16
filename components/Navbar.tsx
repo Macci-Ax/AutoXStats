@@ -17,7 +17,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, user, o
     { id: 'drivers', label: 'Fahrer', icon: Users },
     { id: 'gallery', label: 'Galerie', icon: Image },
     // Only show Admin/Editor if user is ADMIN
-    ...(user && user.role === 'ADMIN' ? [{ id: 'admin', label: 'Editor', icon: Settings }] : []),
+    // Only show Admin/Editor if user is ADMIN
+    ...(user && user.role === 'ADMIN' ? [
+      { id: 'admin', label: 'Editor', icon: Settings },
+      { id: 'admin-events', label: 'Event-Verwaltung', icon: Calendar }
+    ] : []),
   ];
 
   const handleNav = (id: string) => {

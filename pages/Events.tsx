@@ -1,18 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Calendar as CalIcon, CheckCircle, Clock } from 'lucide-react';
 
+interface ChampionshipInfo {
+  championshipEventId: string;
+  championship: string;
+  hasResults: boolean;
+}
+
 interface Event {
   id: string;
   championship: string;
+  championships: ChampionshipInfo[];
   name: string;
   date: string;
   location: string;
-  status: 'COMPLETED' | 'UPCOMING';
+  status: 'COMPLETED' | 'UPCOMING' | 'LIVE';
 }
 
 interface EventsProps {
   onNavigate?: (page: string) => void;
-  onSelectEvent?: (eventId: string) => void;
+  onSelectEvent?: (eventId: string, championship?: string) => void;
 }
 
 export const Events: React.FC<EventsProps> = ({ onNavigate, onSelectEvent }) => {
@@ -34,6 +41,8 @@ export const Events: React.FC<EventsProps> = ({ onNavigate, onSelectEvent }) => 
       <div className="grid gap-6">
         {sortedEvents.map(event => {
           const isCompleted = event.status === 'COMPLETED';
+          const isJointEvent = event.championships && event.championships.length > 1;
+
           return (
             <div key={event.id} className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden flex flex-col md:flex-row shadow-lg hover:shadow-xl transition">
               {/* Date Box */}
@@ -45,7 +54,26 @@ export const Events: React.FC<EventsProps> = ({ onNavigate, onSelectEvent }) => 
               {/* Info */}
               <div className="p-6 flex-1 flex flex-col justify-center">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
-                  <span className="bg-slate-900 text-slate-300 text-xs font-bold px-2 py-1 rounded border border-slate-700">{event.championship}</span>
+                  {/* Show all championship badges for joint events */}
+                  {event.championships && event.championships.length > 0 ? (
+                    event.championships.map(c => (
+                      <span key={c.championshipEventId} className="bg-slate-900 text-slate-300 text-xs font-bold px-2 py-1 rounded border border-slate-700">
+                        {c.championship}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="bg-slate-900 text-slate-300 text-xs font-bold px-2 py-1 rounded border border-slate-700">
+                      {event.championship}
+                    </span>
+                  )}
+
+                  {/* Joint Event indicator */}
+                  {isJointEvent && (
+                    <span className="text-xs font-bold text-purple-400 bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20">
+                      Joint Event
+                    </span>
+                  )}
+
                   {isCompleted ? (
                     <span className="flex items-center gap-1 text-xs font-bold text-green-500 bg-green-500/10 px-2 py-1 rounded border border-green-500/20">
                       <CheckCircle size={12} /> Beendet
