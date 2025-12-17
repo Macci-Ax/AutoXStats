@@ -20,45 +20,49 @@ async function setupUsers() {
     const passwordHash = await bcrypt.hash(plainPassword, saltRounds);
 
     db.serialize(() => {
-        // Create table
-        db.run(`CREATE TABLE IF NOT EXISTS users (
+        // DROP existing table first
+        db.run(`DROP TABLE IF EXISTS users`, (err) => {
+            if (err) {
+                console.error("Error dropping table:", err.message);
+                return;
+            }
+            console.log("Dropped existing users table.");
+        });
+
+        // Create table with created_at field
+        db.run(`CREATE TABLE users (
             id TEXT PRIMARY KEY,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
-            role TEXT NOT NULL
+            role TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )`, (err) => {
             if (err) {
                 console.error("Error creating table:", err.message);
                 return;
             }
-            console.log("Users table verified/created.");
+            console.log("Users table created with created_at field.");
         });
 
         // Insert Admin
-        // Using a fixed ID for the admin for simplicity or UUID
         const adminId = 'admin_001';
 
         const insertStmt = db.prepare(`
-            INSERT INTO users (id, email, password_hash, role) 
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(email) DO UPDATE SET
-                password_hash = excluded.password_hash,
-                role = excluded.role
+            INSERT INTO users (id, email, password_hash, role, created_at) 
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
         `);
 
         insertStmt.run(adminId, adminEmail, passwordHash, 'ADMIN', (err) => {
             if (err) {
                 console.error("Error inserting admin:", err.message);
             } else {
-                console.log(`Admin user '${adminEmail}' upserted successfully.`);
+                console.log(`Admin user '${adminEmail}' created successfully.`);
             }
             insertStmt.finalize();
         });
     });
 
-    // Close after a short delay to ensure async ops finish (serialize typically handles order, but close is immediate)
-    // Actually db.close() inside serialize might trigger before run callbacks if not careful.
-    // Better to close in callback or just let script finish.
+    // Close after a short delay
     setTimeout(() => {
         db.close((err) => {
             if (err) console.error(err.message);

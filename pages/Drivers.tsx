@@ -280,7 +280,12 @@ export const Drivers: React.FC = () => {
                     {allClassParticipations.map(p => (
                       <div key={p.driver.id + p.driverClass} className="flex justify-between items-center bg-slate-900 p-3 rounded border border-slate-800">
                         <div className="flex items-center gap-3">
-                          <span className="text-slate-200 font-bold block">{p.driverClass}</span>
+                          <span className="text-slate-200 font-bold">{p.driverClass}</span>
+                          {p.stats.seasonRank && (
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded ${p.stats.seasonRank <= 3 ? 'bg-yellow-900/30 text-yellow-500 border border-yellow-500/30' : 'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+                              #{p.stats.seasonRank}
+                            </span>
+                          )}
                         </div>
                         <span className="text-white font-black">{p.stats.points} Pkt</span>
                       </div>

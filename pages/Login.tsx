@@ -80,6 +80,13 @@ const Login: React.FC<LoginProps> = ({ onNavigate }) => {
                         <a href="/" className="text-gray-400 hover:text-white text-sm">Back to Home</a>
                     </div>
                 </form>
+
+                <div className="mt-6 text-center text-sm text-slate-400 border-t border-slate-700 pt-6">
+                    Noch kein Konto?{' '}
+                    <button onClick={() => onNavigate('register')} className="text-red-500 hover:text-red-400 font-medium transition">
+                        Jetzt registrieren
+                    </button>
+                </div>
             </div>
         </div>
     );

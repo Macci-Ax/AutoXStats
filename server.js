@@ -107,6 +107,73 @@ app.post('/api/auth/logout', (req, res) => {
     });
 });
 
+// POST /api/auth/register
+app.post('/api/auth/register', async (req, res) => {
+    const { email, password, passwordConfirm } = req.body;
+
+    // Validation
+    if (!email || !password) {
+        return res.status(400).json({ error: "Email and password are required" });
+    }
+
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: "Invalid email format" });
+    }
+
+    // Password minimum length (as per instruction: enforce password minimum length)
+    if (password.length < 8) {
+        return res.status(400).json({ error: "Password must be at least 8 characters" });
+    }
+
+    // Password confirmation check
+    if (password !== passwordConfirm) {
+        return res.status(400).json({ error: "Passwords do not match" });
+    }
+
+    // Check if email already exists
+    db.get("SELECT id FROM users WHERE email = ?", [email], async (err, existingUser) => {
+        if (err) {
+            return res.status(500).json({ error: "Database error" });
+        }
+        if (existingUser) {
+            return res.status(409).json({ error: "Email already registered" });
+        }
+
+        try {
+            // Hash password with bcrypt (as per instruction)
+            const passwordHash = await bcrypt.hash(password, 10);
+            const userId = 'user_' + Date.now();
+
+            // Create user with role USER (as per instruction: Default role for registrations = USER, Roles must never be settable by the client)
+            db.run(
+                "INSERT INTO users (id, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?)",
+                [userId, email, passwordHash, 'USER', new Date().toISOString()],
+                function (insertErr) {
+                    if (insertErr) {
+                        return res.status(500).json({ error: "Failed to create user" });
+                    }
+
+                    // Auto-login after registration (create session)
+                    req.session.user = {
+                        id: userId,
+                        email: email,
+                        role: 'USER'
+                    };
+
+                    res.status(201).json({
+                        message: "Registration successful",
+                        user: req.session.user
+                    });
+                }
+            );
+        } catch (hashErr) {
+            return res.status(500).json({ error: "Failed to process registration" });
+        }
+    });
+});
+
 // GET /api/auth/me
 app.get('/api/auth/me', (req, res) => {
     if (req.session && req.session.user) {
@@ -329,23 +396,26 @@ app.get('/api/drivers', (req, res) => {
                         heatWins: hasRaces ? heatWins : d.static_heat,
                         podiums: hasRaces ? (wins + seconds + thirds) : 0,
                         seasonRank: 0, // Will recalculate sorting below
-                    }
+                    },
+                    // Internal use for ranking
+                    _classId: d.class_id
                 };
             });
 
             // Recalculate Season Ranks properly across the whole list (grouped by class)
-            // 1. Group by class name
+            // 1. Group by class ID to separate championships (e.g. DRCV Langstrecke vs WACV Langstrecke)
             const byClass = {};
             entries.forEach(e => {
-                if (!byClass[e.driverClass]) byClass[e.driverClass] = [];
-                byClass[e.driverClass].push(e);
+                const key = e._classId || e.driverClass;
+                if (!byClass[key]) byClass[key] = [];
+                byClass[key].push(e);
             });
 
             // 2. Sort and assign rank
-            Object.keys(byClass).forEach(cls => {
-                // Sort by Points (Desc), then Wins, then Seconds... (simple version: just Points)
-                byClass[cls].sort((a, b) => b.stats.points - a.stats.points);
-                byClass[cls].forEach((e, idx) => {
+            Object.keys(byClass).forEach(key => {
+                // Sort by Points (Desc)
+                byClass[key].sort((a, b) => b.stats.points - a.stats.points);
+                byClass[key].forEach((e, idx) => {
                     e.stats.seasonRank = idx + 1;
                 });
             });
@@ -444,25 +514,28 @@ app.get('/api/drivers/:id/results', (req, res) => {
     const driverId = req.params.id;
     const query = `
         SELECT 
-            e.name as event_name, 
-            e.date as event_date, 
+            pe.title as event_name, 
+            pe.start_date as event_date, 
             c.name as class_name, 
             r.rank, 
-            r.points,
+            COALESCE(r.championship_points, r.points) as points,
             r.heat_wins
         FROM race_results r
-        JOIN events e ON r.event_id = e.id
+        JOIN championship_events ce ON r.championship_event_id = ce.id
+        JOIN physical_events pe ON ce.physical_event_id = pe.id
         LEFT JOIN classes c ON r.class_id = c.id
         WHERE r.driver_id = ?
-        ORDER BY e.date DESC
+        ORDER BY pe.start_date DESC
     `;
 
     db.all(query, [driverId], (err, rows) => {
         if (err) {
-            res.status(400).json({ error: err.message });
+            console.error("Error fetching driver results:", err.message);
+            // Return empty array instead of error to prevent frontend crash
+            res.json([]);
             return;
         }
-        res.json(rows);
+        res.json(rows || []);
     });
 });
 

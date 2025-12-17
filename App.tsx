@@ -9,6 +9,7 @@ import AdminResults from './pages/AdminResults';
 import AdminEvents from './pages/AdminEvents';
 import { ChatAssistant } from './components/ChatAssistant';
 import Login from './pages/Login';
+import { Register } from './pages/Register';
 import { User } from './types';
 import { useAuth } from './context/AuthContext';
 
@@ -61,6 +62,7 @@ const App: React.FC = () => {
         if (!user || user.role !== 'ADMIN') return <Login onNavigate={navigate} />;
         return <AdminEvents />;
       case 'login': return <Login onNavigate={navigate} />;
+      case 'register': return <Register onNavigate={navigate} />;
       case 'profile': return user ? <Profile user={user} driverData={MOCK_DRIVERS.find(d => d.id === user.driverId)} onLogout={() => { /* Logout handled by context usually or component */ setPage('home'); }} onUpdate={() => { }} /> : <Home onNavigate={navigate} />;
       default: return <Home onNavigate={navigate} />;
     }
