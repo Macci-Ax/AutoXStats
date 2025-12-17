@@ -75,7 +75,9 @@ export const EventResults: React.FC<EventResultsProps> = ({ eventId, onBack }) =
             });
     }, [eventId, selectedChampionship]);
 
-    const groupedResults = results.reduce((acc, result) => {
+    const safeResults = Array.isArray(results) ? results : [];
+
+    const groupedResults = safeResults.reduce((acc, result) => {
         if (!acc[result.class_name]) {
             acc[result.class_name] = [];
         }
@@ -126,8 +128,8 @@ export const EventResults: React.FC<EventResultsProps> = ({ eventId, onBack }) =
                             key={champ.championshipEventId}
                             onClick={() => setSelectedChampionship(champ.championship)}
                             className={`px-4 py-2 rounded-lg font-medium transition ${selectedChampionship === champ.championship
-                                    ? 'bg-red-600 text-white'
-                                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                ? 'bg-red-600 text-white'
+                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                                 } ${!champ.hasResults ? 'opacity-50' : ''}`}
                         >
                             {champ.championship}

@@ -5,6 +5,8 @@ import { Drivers } from './pages/Drivers';
 import { Events } from './pages/Events';
 import { Gallery } from './pages/Gallery';
 import { Profile } from './pages/Profile';
+import { ProfileEdit } from './pages/ProfileEdit';
+import { PublicProfile } from './pages/PublicProfile';
 import AdminResults from './pages/AdminResults';
 import AdminEvents from './pages/AdminEvents';
 import { ChatAssistant } from './components/ChatAssistant';
@@ -19,6 +21,7 @@ import { Button } from './components/Button';
 import { MOCK_DRIVERS } from './constants';
 
 import { EventResults } from './pages/EventResults';
+import { Calendar } from './pages/Calendar';
 
 const App: React.FC = () => {
   const [page, setPage] = useState('home');
@@ -64,6 +67,8 @@ const App: React.FC = () => {
       case 'login': return <Login onNavigate={navigate} />;
       case 'register': return <Register onNavigate={navigate} />;
       case 'profile': return user ? <Profile user={user} driverData={MOCK_DRIVERS.find(d => d.id === user.driverId)} onLogout={() => { /* Logout handled by context usually or component */ setPage('home'); }} onUpdate={() => { }} /> : <Home onNavigate={navigate} />;
+      case 'profile-edit': return user ? <ProfileEdit onNavigate={navigate} /> : <Login onNavigate={navigate} />;
+      case 'calendar': return user ? <Calendar onNavigate={navigate} /> : <Login onNavigate={navigate} />;
       default: return <Home onNavigate={navigate} />;
     }
   };

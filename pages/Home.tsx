@@ -93,8 +93,8 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                   <span className="text-white font-bold text-lg">{randomClassData.className}</span>
                 </div>
                 <div className="grid grid-cols-1 gap-3">
-                  {randomClassData.drivers.map((entry: LeaderboardEntry, index) => (
-                    <div key={entry.driver.id} className={`bg-slate-900/50 p-4 rounded-lg flex items-center gap-4 border ${index === 0 ? 'border-yellow-500/30 bg-yellow-900/10' : 'border-slate-700/50'} hover:border-red-500/50 transition cursor-pointer group`} onClick={() => onNavigate('drivers')}>
+                  {randomClassData.drivers.map((entry: any, index: number) => (
+                    <div key={entry.id || index} className={`bg-slate-900/50 p-4 rounded-lg flex items-center gap-4 border ${index === 0 ? 'border-yellow-500/30 bg-yellow-900/10' : 'border-slate-700/50'} hover:border-red-500/50 transition cursor-pointer group`} onClick={() => onNavigate('drivers')}>
                       {/* Rank */}
                       <div className="text-2xl font-black w-8 text-center shrink-0" style={{ color: index === 0 ? '#fbbf24' : index === 1 ? '#94a3b8' : '#b45309' }}>
                         {index + 1}
@@ -102,45 +102,28 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
 
                       {/* Avatar */}
                       <div className="bg-slate-800 h-12 w-12 rounded-full flex items-center justify-center text-xs font-bold text-slate-400 border border-slate-600 overflow-hidden shrink-0">
-                        <img src={entry.driver.avatarUrl} alt={entry.driver.name} className="w-full h-full object-cover" />
+                        <img src={`https://picsum.photos/100/100?random=${entry.id || index}`} alt={entry.name} className="w-full h-full object-cover" />
                       </div>
 
                       {/* Info: Name & Team */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-white truncate text-lg">{entry.driver.name}</h3>
+                        <h3 className="font-bold text-white truncate text-lg">{entry.name}</h3>
                         <p className="text-xs text-slate-400 truncate flex items-center gap-1">
-                          {entry.team ? entry.team.name : 'Privatfahrer'}
+                          {entry.team || 'Privatfahrer'}
                         </p>
                       </div>
 
-                      {/* Car & Number (Hidden on mobile) */}
+                      {/* Car (Hidden on mobile) */}
                       <div className="hidden sm:flex flex-col items-end gap-1 text-right min-w-[100px]">
                         <div className="text-xs font-bold text-slate-300 flex items-center gap-1.5 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
                           <Car size={12} className="text-slate-500" />
-                          {entry.car || 'Fahrzeug N/A'}
-                        </div>
-                        <span className="text-[10px] text-slate-500 font-mono">#{entry.number}</span>
-                      </div>
-
-                      {/* Stats: Wins/Podiums (Hidden on mobile) */}
-                      <div className="hidden md:flex items-center gap-4 px-4 border-l border-slate-700/50">
-                        <div className="text-center">
-                          <div className="text-xs text-slate-500 uppercase mb-0.5">Wins</div>
-                          <div className="font-bold text-white flex items-center gap-1 justify-center">
-                            <Trophy size={12} className="text-yellow-500" /> {entry.stats.wins}
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-xs text-slate-500 uppercase mb-0.5">Podiums</div>
-                          <div className="font-bold text-white flex items-center gap-1 justify-center">
-                            <Medal size={12} className="text-slate-400" /> {entry.stats.podiums}
-                          </div>
+                          {entry.car || 'N/A'}
                         </div>
                       </div>
 
                       {/* Points */}
                       <div className="text-right pl-2 border-l border-slate-700/50 sm:border-none min-w-[60px]">
-                        <span className="block text-xl font-black text-white leading-none">{entry.stats.points}</span>
+                        <span className="block text-xl font-black text-white leading-none">{entry.points}</span>
                         <span className="text-[10px] text-slate-500 uppercase font-bold">Punkte</span>
                       </div>
                     </div>

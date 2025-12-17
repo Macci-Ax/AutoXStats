@@ -16,7 +16,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, user, o
     { id: 'events', label: 'Events', icon: Calendar },
     { id: 'drivers', label: 'Fahrer', icon: Users },
     { id: 'gallery', label: 'Galerie', icon: Image },
-    // Only show Admin/Editor if user is ADMIN
+    // Show Calendar for logged-in users
+    ...(user ? [
+      { id: 'calendar', label: 'Mein Kalender', icon: Calendar }
+    ] : []),
     // Only show Admin/Editor if user is ADMIN
     ...(user && user.role === 'ADMIN' ? [
       { id: 'admin', label: 'Editor', icon: Settings },
@@ -60,10 +63,12 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, user, o
 
           <div className="hidden md:block">
             {user ? (
-              <button onClick={() => handleNav('profile')} className="flex items-center gap-2 text-slate-300 hover:text-white">
-                <img src={user.avatarUrl || 'https://picsum.photos/40/40'} alt="Avatar" className="w-8 h-8 rounded-full border border-slate-600" />
-                <span className="text-sm font-medium">{user.name}</span>
-              </button>
+              <div className="flex items-center gap-3">
+                <button onClick={() => handleNav('profile-edit')} className="flex items-center gap-2 text-slate-300 hover:text-white transition-colors">
+                  <img src={user.avatarUrl || 'https://picsum.photos/40/40'} alt="Avatar" className="w-8 h-8 rounded-full border border-slate-600" />
+                  <span className="text-sm font-medium">{user.name || user.email}</span>
+                </button>
+              </div>
             ) : (
               <button
                 onClick={onLoginClick}
@@ -105,8 +110,8 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, user, o
             ))}
             <div className="border-t border-slate-800 mt-4 pt-4">
               {user ? (
-                <button onClick={() => handleNav('profile')} className="w-full text-left px-3 py-2 text-slate-300 hover:bg-slate-800 rounded-md flex items-center gap-3">
-                  <User size={18} /> Profil: {user.name}
+                <button onClick={() => handleNav('profile-edit')} className="w-full text-left px-3 py-2 text-slate-300 hover:bg-slate-800 rounded-md flex items-center gap-3">
+                  <User size={18} /> Profil bearbeiten
                 </button>
               ) : (
                 <button onClick={() => { onLoginClick(); setIsOpen(false); }} className="w-full text-left px-3 py-2 text-red-500 hover:bg-slate-800 rounded-md flex items-center gap-3">

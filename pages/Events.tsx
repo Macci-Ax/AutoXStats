@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Calendar as CalIcon, CheckCircle, Clock } from 'lucide-react';
+import { MapPin, Calendar as CalIcon, CheckCircle, Clock, UserPlus, UserMinus } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 interface ChampionshipInfo {
   championshipEventId: string;
@@ -24,6 +25,8 @@ interface EventsProps {
 
 export const Events: React.FC<EventsProps> = ({ onNavigate, onSelectEvent }) => {
   const [events, setEvents] = useState<Event[]>([]);
+  const [participations, setParticipations] = useState<Record<string, boolean>>({});
+  const { user } = useAuth();
 
   useEffect(() => {
     fetch('http://localhost:3000/api/events')
@@ -31,6 +34,40 @@ export const Events: React.FC<EventsProps> = ({ onNavigate, onSelectEvent }) => 
       .then(data => setEvents(data))
       .catch(err => console.error("Failed to fetch events:", err));
   }, []);
+
+  // Fetch participation status for each event if logged in
+  useEffect(() => {
+    if (!user) return;
+    events.forEach(event => {
+      if (event.status !== 'COMPLETED') {
+        fetch(`http://localhost:3000/api/events/${event.id}/participation/status`, {
+          credentials: 'include'
+        })
+          .then(res => res.json())
+          .then(data => {
+            setParticipations(prev => ({ ...prev, [event.id]: data.participating }));
+          })
+          .catch(() => { });
+      }
+    });
+  }, [user, events]);
+
+  const toggleParticipation = async (eventId: string) => {
+    const isParticipating = participations[eventId];
+    const method = isParticipating ? 'DELETE' : 'POST';
+
+    try {
+      const res = await fetch(`http://localhost:3000/api/events/${eventId}/participation`, {
+        method,
+        credentials: 'include'
+      });
+      if (res.ok) {
+        setParticipations(prev => ({ ...prev, [eventId]: !isParticipating }));
+      }
+    } catch (err) {
+      console.error('Failed to toggle participation:', err);
+    }
+  };
 
   const safeEvents = Array.isArray(events) ? events : [];
   const sortedEvents = [...safeEvents].sort((a, b) => a.date.localeCompare(b.date));
@@ -42,6 +79,7 @@ export const Events: React.FC<EventsProps> = ({ onNavigate, onSelectEvent }) => 
         {sortedEvents.map(event => {
           const isCompleted = event.status === 'COMPLETED';
           const isJointEvent = event.championships && event.championships.length > 1;
+          const isParticipating = participations[event.id];
 
           return (
             <div key={event.id} className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden flex flex-col md:flex-row shadow-lg hover:shadow-xl transition">
@@ -54,7 +92,6 @@ export const Events: React.FC<EventsProps> = ({ onNavigate, onSelectEvent }) => 
               {/* Info */}
               <div className="p-6 flex-1 flex flex-col justify-center">
                 <div className="flex flex-wrap items-center gap-2 mb-2">
-                  {/* Show all championship badges for joint events */}
                   {event.championships && event.championships.length > 0 ? (
                     event.championships.map(c => (
                       <span key={c.championshipEventId} className="bg-slate-900 text-slate-300 text-xs font-bold px-2 py-1 rounded border border-slate-700">
@@ -67,7 +104,6 @@ export const Events: React.FC<EventsProps> = ({ onNavigate, onSelectEvent }) => 
                     </span>
                   )}
 
-                  {/* Joint Event indicator */}
                   {isJointEvent && (
                     <span className="text-xs font-bold text-purple-400 bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20">
                       Joint Event
@@ -100,9 +136,26 @@ export const Events: React.FC<EventsProps> = ({ onNavigate, onSelectEvent }) => 
                     Ergebnisse
                   </button>
                 ) : (
-                  <button className="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 rounded transition shadow-lg shadow-red-900/20">
-                    Infos & Nennung
-                  </button>
+                  <>
+                    <button className="w-full bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 rounded transition shadow-lg shadow-red-900/20">
+                      Infos & Nennung
+                    </button>
+                    {user && (
+                      <button
+                        onClick={() => toggleParticipation(event.id)}
+                        className={`w-full text-sm font-medium py-2 rounded transition flex items-center justify-center gap-2 ${isParticipating
+                            ? 'bg-green-700 hover:bg-green-600 text-white'
+                            : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                          }`}
+                      >
+                        {isParticipating ? (
+                          <><UserMinus size={14} /> Teilnahme ✓</>
+                        ) : (
+                          <><UserPlus size={14} /> Teilnehmen</>
+                        )}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
