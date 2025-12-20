@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { User, Save, Instagram, Facebook, Youtube, Eye, EyeOff } from 'lucide-react';
+import { DriverLinkRequest } from '../components/DriverLinkRequest';
 
 interface ProfileData {
     userId: string;
     email: string;
     displayName: string;
     bio: string;
+    driverId?: string; // Add this to check if already linked
     avatarImageId: string | null;
     socialInstagram: string;
     socialFacebook: string;
@@ -31,7 +33,7 @@ export const ProfileEdit: React.FC<ProfileEditProps> = ({ onNavigate }) => {
 
     const fetchProfile = async () => {
         try {
-            const res = await fetch('http://localhost:3000/api/profile/me', {
+            const res = await fetch('/api/profile/me', {
                 credentials: 'include'
             });
             if (!res.ok) {
@@ -56,7 +58,7 @@ export const ProfileEdit: React.FC<ProfileEditProps> = ({ onNavigate }) => {
         setMessage(null);
 
         try {
-            const res = await fetch('http://localhost:3000/api/profile/me', {
+            const res = await fetch('/api/profile/me', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -199,6 +201,9 @@ export const ProfileEdit: React.FC<ProfileEditProps> = ({ onNavigate }) => {
                 </div>
             </div>
 
+            {/* Driver Link Request Section */}
+            {!profile.driverId && <DriverLinkRequest />}
+
             {/* Info Note */}
             <p className="text-sm text-slate-500 mt-4 text-center">
                 <Eye className="inline h-4 w-4 mr-1" /> = öffentlich sichtbar |
@@ -213,8 +218,8 @@ const VisibilityToggle: React.FC<{ isPublic: boolean; onChange: (v: boolean) => 
     <button
         onClick={() => onChange(!isPublic)}
         className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full transition-colors ${isPublic
-                ? 'bg-green-900/50 text-green-400 border border-green-700'
-                : 'bg-slate-700 text-slate-400 border border-slate-600'
+            ? 'bg-green-900/50 text-green-400 border border-green-700'
+            : 'bg-slate-700 text-slate-400 border border-slate-600'
             }`}
     >
         {isPublic ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}

@@ -27,7 +27,7 @@ const AdminResults: React.FC = () => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editValues, setEditValues] = useState<any>({});
 
-    const API_BASE = 'http://localhost:3000/api';
+    const API_BASE = '/api';
 
     // 1. Fetch Initial Data (Years, Classes, All Drivers)
     useEffect(() => {

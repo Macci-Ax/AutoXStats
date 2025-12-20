@@ -3,9 +3,6 @@ import { getDb } from '../config/db.js';
 
 const router = express.Router();
 
-// GET /years moved to miscRoutes
-
-
 // GET /events (Main Event List)
 router.get('/', (req, res) => {
     const db = getDb();
@@ -25,10 +22,8 @@ router.get('/', (req, res) => {
         ORDER BY pe.start_date DESC
     `;
 
-    db.all(query, [year], (err, rows) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
+    try {
+        const rows = db.prepare(query).all(year);
         const events = rows.map(r => {
             // Parse championship events
             const championships = [];
@@ -56,7 +51,9 @@ router.get('/', (req, res) => {
             };
         });
         res.json(events);
-    });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
 });
 
 // GET /events/:id/results (Event Results)
@@ -96,13 +93,13 @@ router.get('/:id/results', (req, res) => {
 
     query += ` ORDER BY c.name, r.rank`;
 
-    db.all(query, params, (err, rows) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
+    try {
+        const rows = db.prepare(query).all(params);
         // Return flat array matching frontend expectations
         res.json(rows || []);
-    });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
 });
 
 export default router;

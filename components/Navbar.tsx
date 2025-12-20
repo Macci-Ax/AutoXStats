@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, X, Trophy, Calendar, Users, Image, User, LogIn, Settings } from 'lucide-react';
+import { Menu, X, Trophy, Calendar, Users, Image, User, LogIn, Settings, Flag } from 'lucide-react';
 
 interface NavbarProps {
   currentPage: string;
@@ -20,10 +20,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, user, o
     ...(user ? [
       { id: 'calendar', label: 'Mein Kalender', icon: Calendar }
     ] : []),
+    // Show Driver Profile if linked
+    ...(user && user.driverId ? [
+      { id: 'my-driver-profile', label: 'Mein Fahrerprofil', icon: Flag }
+    ] : []),
     // Only show Admin/Editor if user is ADMIN
     ...(user && user.role === 'ADMIN' ? [
-      { id: 'admin', label: 'Editor', icon: Settings },
-      { id: 'admin-events', label: 'Event-Verwaltung', icon: Calendar }
+      { id: 'admin', label: 'Admin', icon: Settings }
     ] : []),
   ];
 

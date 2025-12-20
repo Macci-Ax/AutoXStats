@@ -16,23 +16,22 @@ router.get('/me', requireAuth, (req, res) => {
     const userId = req.session.user.id;
     const db = getDb();
 
-    db.get(`
-        SELECT 
-            up.*,
-            u.email
-        FROM users u
-        LEFT JOIN user_profiles up ON u.id = up.user_id
-        WHERE u.id = ?
-    `, [userId], (err, row) => {
-        if (err) {
-            console.error("Error fetching profile:", err.message);
-            return res.status(500).json({ error: "Database error" });
-        }
+    try {
+        const row = db.prepare(`
+            SELECT 
+                up.*,
+                u.email,
+                u.driver_id
+            FROM users u
+            LEFT JOIN user_profiles up ON u.id = up.user_id
+            WHERE u.id = ?
+        `).get(userId);
 
         // Return profile data (or empty defaults if no profile exists yet)
         res.json({
             userId: userId,
             email: row?.email || req.session.user.email,
+            driverId: row?.driver_id || null,
             displayName: row?.display_name || '',
             bio: row?.bio || '',
             avatarImageId: row?.avatar_image_id || null,
@@ -43,7 +42,10 @@ router.get('/me', requireAuth, (req, res) => {
             isBioPublic: row?.is_bio_public === 1,
             isSocialPublic: row?.is_social_public === 1
         });
-    });
+    } catch (err) {
+        console.error("Error fetching profile:", err.message);
+        return res.status(500).json({ error: "Database error" });
+    }
 });
 
 // PUT /me - Update own profile
@@ -65,42 +67,42 @@ router.put('/me', requireAuth, (req, res) => {
     } = req.body;
 
     // Upsert: INSERT OR REPLACE
-    db.run(`
-        INSERT INTO user_profiles (
-            user_id, display_name, bio, avatar_image_id,
-            social_instagram, social_facebook, social_youtube,
-            is_display_name_public, is_bio_public, is_social_public,
-            updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(user_id) DO UPDATE SET
-            display_name = excluded.display_name,
-            bio = excluded.bio,
-            avatar_image_id = excluded.avatar_image_id,
-            social_instagram = excluded.social_instagram,
-            social_facebook = excluded.social_facebook,
-            social_youtube = excluded.social_youtube,
-            is_display_name_public = excluded.is_display_name_public,
-            is_bio_public = excluded.is_bio_public,
-            is_social_public = excluded.is_social_public,
-            updated_at = CURRENT_TIMESTAMP
-    `, [
-        userId,
-        displayName || '',
-        bio || '',
-        avatarImageId || null,
-        socialInstagram || '',
-        socialFacebook || '',
-        socialYoutube || '',
-        isDisplayNamePublic ? 1 : 0,
-        isBioPublic ? 1 : 0,
-        isSocialPublic ? 1 : 0
-    ], function (err) {
-        if (err) {
-            console.error("Error updating profile:", err.message);
-            return res.status(500).json({ error: "Failed to update profile" });
-        }
+    try {
+        db.prepare(`
+            INSERT INTO user_profiles (
+                user_id, display_name, bio, avatar_image_id,
+                social_instagram, social_facebook, social_youtube,
+                is_display_name_public, is_bio_public, is_social_public,
+                updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(user_id) DO UPDATE SET
+                display_name = excluded.display_name,
+                bio = excluded.bio,
+                avatar_image_id = excluded.avatar_image_id,
+                social_instagram = excluded.social_instagram,
+                social_facebook = excluded.social_facebook,
+                social_youtube = excluded.social_youtube,
+                is_display_name_public = excluded.is_display_name_public,
+                is_bio_public = excluded.is_bio_public,
+                is_social_public = excluded.is_social_public,
+                updated_at = CURRENT_TIMESTAMP
+        `).run(
+            userId,
+            displayName || '',
+            bio || '',
+            avatarImageId || null,
+            socialInstagram || '',
+            socialFacebook || '',
+            socialYoutube || '',
+            isDisplayNamePublic ? 1 : 0,
+            isBioPublic ? 1 : 0,
+            isSocialPublic ? 1 : 0
+        );
         res.json({ message: "Profile updated successfully" });
-    });
+    } catch (err) {
+        console.error("Error updating profile:", err.message);
+        return res.status(500).json({ error: "Failed to update profile" });
+    }
 });
 
 // GET /:userId - Get public profile for any user
@@ -108,16 +110,13 @@ router.get('/:userId', (req, res) => {
     const targetUserId = req.params.userId;
     const db = getDb();
 
-    db.get(`
-        SELECT up.*, u.id as user_id
-        FROM users u
-        LEFT JOIN user_profiles up ON u.id = up.user_id
-        WHERE u.id = ?
-    `, [targetUserId], (err, row) => {
-        if (err) {
-            console.error("Error fetching public profile:", err.message);
-            return res.status(500).json({ error: "Database error" });
-        }
+    try {
+        const row = db.prepare(`
+            SELECT up.*, u.id as user_id
+            FROM users u
+            LEFT JOIN user_profiles up ON u.id = up.user_id
+            WHERE u.id = ?
+        `).get(targetUserId);
 
         if (!row) {
             return res.status(404).json({ error: "User not found" });
@@ -144,7 +143,10 @@ router.get('/:userId', (req, res) => {
         }
 
         res.json(publicProfile);
-    });
+    } catch (err) {
+        console.error("Error fetching public profile:", err.message);
+        return res.status(500).json({ error: "Database error" });
+    }
 });
 
 export default router;

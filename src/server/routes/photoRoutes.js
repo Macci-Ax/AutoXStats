@@ -22,13 +22,13 @@ router.get('/gallery/events', (req, res) => {
         ORDER BY pe.start_date DESC
     `;
 
-    db.all(query, [], (err, rows) => {
-        if (err) {
-            console.error("Error fetching gallery events:", err.message);
-            return res.status(500).json({ error: err.message });
-        }
+    try {
+        const rows = db.prepare(query).all();
         res.json(rows);
-    });
+    } catch (err) {
+        console.error("Error fetching gallery events:", err.message);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // GET /photos (List photos)
@@ -50,11 +50,8 @@ router.get('/photos', (req, res) => {
     }
     query += " GROUP BY p.id ORDER BY p.created_at DESC";
 
-    db.all(query, params, (err, rows) => {
-        if (err) {
-            console.error("Error fetching photos:", err.message);
-            return res.status(500).json({ error: err.message });
-        }
+    try {
+        const rows = db.prepare(query).all(params);
 
         const photos = rows.map(r => {
             const tags = [];
@@ -77,7 +74,10 @@ router.get('/photos', (req, res) => {
             };
         });
         res.json(photos);
-    });
+    } catch (err) {
+        console.error("Error fetching photos:", err.message);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // POST /photos (Upload photos)
@@ -102,7 +102,7 @@ router.post('/photos', upload.array('photos'), (req, res) => {
         const photoId = 'p_' + Date.now() + '_' + Math.round(Math.random() * 1000);
 
         try {
-            stmt.run([photoId, eventId || 'e_general', fileUrl, finalPhotographer]);
+            stmt.run(photoId, eventId || 'e_general', fileUrl, finalPhotographer);
             uploadedPhotos.push({
                 id: photoId,
                 url: fileUrl,
@@ -115,8 +115,6 @@ router.post('/photos', upload.array('photos'), (req, res) => {
             errors.push(err.message);
         }
     });
-
-    stmt.finalize();
 
     if (uploadedPhotos.length === 0 && errors.length > 0) {
         return res.status(500).json({ error: "Failed to save photos", details: errors });
@@ -138,24 +136,26 @@ router.post('/photos/:id/tags', requireAdmin, (req, res) => {
     if (!driverId) return res.status(400).json({ error: "Driver ID required" });
 
     const tagId = 'tag_' + Date.now() + '_' + Math.round(Math.random() * 1000);
-    db.run(
-        "INSERT INTO photo_tags (id, photo_id, driver_id) VALUES (?, ?, ?)",
-        [tagId, photoId, driverId],
-        function (err) {
-            if (err) return res.status(500).json({ error: err.message });
-            res.json({ message: "Tag added", tag: { id: tagId, driverId } });
-        }
-    );
+    try {
+        db.prepare(
+            "INSERT INTO photo_tags (id, photo_id, driver_id) VALUES (?, ?, ?)"
+        ).run(tagId, photoId, driverId);
+        res.json({ message: "Tag added", tag: { id: tagId, driverId } });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // DELETE /photos/:id/tags/:tagId (Remove tag)
 router.delete('/photos/:id/tags/:tagId', requireAdmin, (req, res) => {
     const { tagId } = req.params;
     const db = getDb();
-    db.run("DELETE FROM photo_tags WHERE id = ?", [tagId], function (err) {
-        if (err) return res.status(500).json({ error: err.message });
+    try {
+        db.prepare("DELETE FROM photo_tags WHERE id = ?").run(tagId);
         res.json({ message: "Tag removed" });
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // GET /drivers/:id/photos (Get driver photos)
@@ -169,9 +169,8 @@ router.get('/drivers/:id/photos', (req, res) => {
         WHERE pt.driver_id = ?
         ORDER BY p.created_at DESC
     `;
-    db.all(query, [driverId], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-
+    try {
+        const rows = db.prepare(query).all(driverId);
         const photos = rows.map(r => ({
             id: r.id,
             url: r.storage_path,
@@ -181,7 +180,9 @@ router.get('/drivers/:id/photos', (req, res) => {
             highResAvailable: true
         }));
         res.json(photos);
-    });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 export default router;

@@ -13,11 +13,21 @@ import resultRoutes from './routes/resultRoutes.js';
 import miscRoutes from './routes/miscRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
 import participationRoutes from './routes/participationRoutes.js';
+import statusRoutes from './routes/statusRoutes.js';
+import requestRoutes from './routes/requestRoutes.js';
 
 const app = express();
 
 app.use(cors({
-    origin: 'http://localhost:5173', // Vite default port
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        // Allow localhost and local network IPs
+        // You might want to be more specific for security in production,
+        // but for local dev, allowing all is often easiest or checking regex
+        return callback(null, true);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));
@@ -60,6 +70,12 @@ app.use('/api', photoRoutes);
 app.use('/api', resultRoutes);
 app.use('/api', miscRoutes);
 app.use('/api', participationRoutes);
+
+// /api/status/*
+app.use('/api/status', statusRoutes);
+
+// /api/requests/*
+app.use('/api/requests', requestRoutes);
 
 
 // Root route

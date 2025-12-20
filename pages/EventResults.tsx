@@ -41,7 +41,7 @@ export const EventResults: React.FC<EventResultsProps> = ({ eventId, onBack }) =
 
     useEffect(() => {
         // Fetch event info including championships
-        fetch('http://localhost:3000/api/events')
+        fetch('/api/events')
             .then(res => res.json())
             .then(events => {
                 const evt = events.find((e: any) => e.id === eventId);
@@ -58,7 +58,7 @@ export const EventResults: React.FC<EventResultsProps> = ({ eventId, onBack }) =
 
     useEffect(() => {
         // Fetch results, optionally filtered by championship
-        let url = `http://localhost:3000/api/events/${eventId}/results`;
+        let url = `/api/events/${eventId}/results`;
         if (selectedChampionship) {
             url += `?championship=${selectedChampionship}`;
         }

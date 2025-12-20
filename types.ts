@@ -113,3 +113,12 @@ export interface ChatMessage {
   text: string;
   timestamp: Date;
 }
+
+export interface StatusUpdate {
+  id: string;
+  userId: string;
+  driverId?: string;
+  content: string;
+  createdAt: string;
+  authorEmail?: string;
+}

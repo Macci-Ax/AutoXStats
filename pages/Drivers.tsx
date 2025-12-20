@@ -31,7 +31,7 @@ export const Drivers: React.FC = () => {
 
   // Fetch available years on mount
   useEffect(() => {
-    fetch('http://localhost:3000/api/years')
+    fetch('/api/years')
       .then(res => res.json())
       .then(years => {
         if (Array.isArray(years) && years.length > 0) {
@@ -61,7 +61,7 @@ export const Drivers: React.FC = () => {
 
   // Fetch drivers with selected year
   useEffect(() => {
-    fetch(`http://localhost:3000/api/drivers?year=${selectedYear}`)
+    fetch(`/api/drivers?year=${selectedYear}`)
       .then(res => res.json())
       .then(data => setEntries(data))
       .catch(err => console.error("Failed to fetch drivers:", err));
@@ -74,16 +74,16 @@ export const Drivers: React.FC = () => {
     if (selectedEntry) {
       const driverId = selectedEntry.driver.originalId || selectedEntry.driver.id;
       // Fetch Results
-      fetch(`http://localhost:3000/api/drivers/${driverId}/results`)
+      fetch(`/api/drivers/${driverId}/results`)
         .then(res => res.json())
         .then(data => setRecentResults(data))
         .catch(err => console.error("Failed to fetch results:", err));
 
       // Fetch Photos
-      fetch(`http://localhost:3000/api/drivers/${driverId}/photos`)
+      fetch(`/api/drivers/${driverId}/photos`)
         .then(res => res.json())
         .then(data => {
-          const mapped = data.map((p: any) => ({ ...p, url: `http://localhost:3000${p.url}` }));
+          const mapped = data.map((p: any) => ({ ...p, url: p.url }));
           setDriverPhotos(mapped);
         })
         .catch(err => console.error("Failed to fetch photos:", err));

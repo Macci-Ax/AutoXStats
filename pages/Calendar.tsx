@@ -27,7 +27,7 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
 
     const fetchCalendar = async () => {
         try {
-            const res = await fetch('http://localhost:3000/api/calendar/me', {
+            const res = await fetch('/api/calendar/me', {
                 credentials: 'include'
             });
             if (!res.ok) {
@@ -48,7 +48,7 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
 
     const toggleVisibility = async (eventId: string, currentPublic: boolean) => {
         try {
-            await fetch(`http://localhost:3000/api/events/${eventId}/participation`, {
+            await fetch(`/api/events/${eventId}/participation`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -64,7 +64,7 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
 
     const removeParticipation = async (eventId: string) => {
         try {
-            await fetch(`http://localhost:3000/api/events/${eventId}/participation`, {
+            await fetch(`/api/events/${eventId}/participation`, {
                 method: 'DELETE',
                 credentials: 'include'
             });
@@ -135,8 +135,8 @@ export const Calendar: React.FC<CalendarProps> = ({ onNavigate }) => {
                                 <button
                                     onClick={() => toggleVisibility(event.event_id, event.is_public)}
                                     className={`p-2 rounded-lg transition-colors ${event.is_public
-                                            ? 'bg-green-900/50 text-green-400 hover:bg-green-900/70'
-                                            : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                                        ? 'bg-green-900/50 text-green-400 hover:bg-green-900/70'
+                                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
                                         }`}
                                     title={event.is_public ? 'Öffentlich' : 'Privat'}
                                 >

@@ -33,7 +33,7 @@ export const Gallery: React.FC<GalleryProps> = ({ user }) => {
 
   useEffect(() => {
     if (user?.role === 'ADMIN') {
-      fetch('http://localhost:3000/api/admin/all-drivers', { credentials: 'include' })
+      fetch('/api/admin/all-drivers', { credentials: 'include' })
         .then(r => r.json())
         .then(setAllDrivers)
         .catch(e => console.error(e));
@@ -43,7 +43,7 @@ export const Gallery: React.FC<GalleryProps> = ({ user }) => {
   const handleAddTag = (driverId: string) => {
     if (!taggingPhotoId) return;
 
-    fetch(`http://localhost:3000/api/photos/${taggingPhotoId}/tags`, {
+    fetch(`/api/photos/${taggingPhotoId}/tags`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ driverId }),
@@ -73,18 +73,18 @@ export const Gallery: React.FC<GalleryProps> = ({ user }) => {
 
   useEffect(() => {
     // 1. Load Events (dropdown)
-    fetch('http://localhost:3000/api/events')
+    fetch('/api/events')
       .then(r => r.json())
       .then(data => setEvents(data))
       .catch(err => console.error("Failed to load events", err));
 
     // 2. Load Gallery Events (Overview)
-    fetch('http://localhost:3000/api/gallery/events')
+    fetch('/api/gallery/events')
       .then(r => r.json())
       .then(data => {
         const mapped = data.map((e: any) => ({
           ...e,
-          cover_url: e.cover_url ? `http://localhost:3000${e.cover_url}` : null
+          cover_url: e.cover_url ? e.cover_url : null
         }));
         setGalleryEvents(mapped);
       })
@@ -95,7 +95,7 @@ export const Gallery: React.FC<GalleryProps> = ({ user }) => {
   }, []);
 
   const loadPhotos = (eventId?: string) => {
-    let url = 'http://localhost:3000/api/photos';
+    let url = '/api/photos';
     if (eventId && eventId !== 'all') {
       url += `?eventId=${eventId}`;
     }
@@ -105,7 +105,7 @@ export const Gallery: React.FC<GalleryProps> = ({ user }) => {
         // Transform relative URL to absolute for localhost
         const mapped = data.map((p: any) => ({
           ...p,
-          url: `http://localhost:3000${p.url}` // Helper for localhost
+          url: p.url // Helper for localhost
         }));
         setPhotos(mapped);
       })
@@ -157,7 +157,7 @@ export const Gallery: React.FC<GalleryProps> = ({ user }) => {
     formData.append('photographer', user?.name || 'Gast');
 
     try {
-      const res = await fetch('http://localhost:3000/api/photos', {
+      const res = await fetch('/api/photos', {
         method: 'POST',
         body: formData,
         credentials: 'include'
@@ -294,7 +294,7 @@ export const Gallery: React.FC<GalleryProps> = ({ user }) => {
                             onClick={(e) => {
                               e.stopPropagation();
                               if (confirm('Tag löschen?')) {
-                                fetch(`http://localhost:3000/api/photos/${photo.id}/tags/${tag.id}`, { method: 'DELETE', credentials: 'include' })
+                                fetch(`/api/photos/${photo.id}/tags/${tag.id}`, { method: 'DELETE', credentials: 'include' })
                                   .then(res => {
                                     if (res.ok) loadPhotos(selectedEventId);
                                     else alert("Fehler beim Löschen des Tags");

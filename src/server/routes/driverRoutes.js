@@ -45,11 +45,8 @@ router.get('/', (req, res) => {
         WHERE (pe.id IS NULL OR strftime('%Y', pe.start_date) = ?)
     `;
 
-    db.all(rulesQuery, [year], (err, rulesRows) => {
-        if (err) {
-            console.error("Database Error (Rules):", err.message);
-            return res.status(500).json({ error: err.message });
-        }
+    try {
+        const rulesRows = db.prepare(rulesQuery).all(year);
 
         // Map: class_id -> { discipline, validEvents: Set(event_id) }
         const classRules = {};
@@ -60,137 +57,136 @@ router.get('/', (req, res) => {
             classRules[r.class_id].validEvents.add(r.championship_event_id);
         });
 
-        db.all(dataQuery, [year], (err, dataRows) => {
-            if (err) {
-                console.error("Database Error (Data):", err.message);
-                return res.status(500).json({ error: err.message });
+        const dataRows = db.prepare(dataQuery).all(year);
+
+        // Group by Driver+Class
+        const driverMap = {};
+
+        dataRows.forEach(row => {
+            const key = `${row.driver_id}::${row.class_id}`;
+            if (!driverMap[key]) {
+                driverMap[key] = {
+                    driver_id: row.driver_id,
+                    class_id: row.class_id,
+                    name: row.name,
+                    team: row.team,
+                    car: row.car,
+                    number: row.number,
+                    bio: row.bio,
+                    driverClass: row.driverClass,
+                    champ_id: row.champ_id,
+                    static_points: row.static_points || 0,
+                    static_heat: row.static_heat || 0,
+                    results: []
+                };
+            }
+            if (row.result_id) {
+                driverMap[key].results.push({
+                    championship_event_id: row.championship_event_id,
+                    points: row.championship_points || 0,
+                    rank: row.rank,
+                    heat_wins: row.race_heat_wins || 0
+                });
+            }
+        });
+
+        // Calculate Points with Streicher Logic
+        const entries = Object.values(driverMap).map(d => {
+            const rules = classRules[d.class_id];
+            const validEventIds = rules ? rules.validEvents : new Set();
+            const discipline = rules ? rules.discipline : 'unknown';
+
+            // Filter results to only valid events for this class
+            const validResults = d.results.filter(r => validEventIds.has(r.championship_event_id));
+
+            // For Streicher logic: take all valid events, map points, then drop
+            const allEventScores = [];
+            validEventIds.forEach(champEventId => {
+                const res = validResults.find(r => r.championship_event_id === champEventId);
+                allEventScores.push(res ? res.points : 0);
+            });
+
+            // Sort descending
+            allEventScores.sort((a, b) => b - a);
+
+            let rawPoints = allEventScores.reduce((sum, p) => sum + p, 0);
+            let finalPoints = 0;
+
+            if (discipline === 'klasse' || discipline === 'endlauf') {
+                // Drop last 1 (User correction from original code comment)
+                const scoresToCount = allEventScores.slice(0, Math.max(0, allEventScores.length - 1));
+                finalPoints = scoresToCount.reduce((sum, p) => sum + p, 0);
+            } else {
+                finalPoints = rawPoints;
             }
 
-            // Group by Driver+Class
-            const driverMap = {};
+            const hasRaces = validResults.length > 0;
 
-            dataRows.forEach(row => {
-                const key = `${row.driver_id}::${row.class_id}`;
-                if (!driverMap[key]) {
-                    driverMap[key] = {
-                        driver_id: row.driver_id,
-                        class_id: row.class_id,
-                        name: row.name,
-                        team: row.team,
-                        car: row.car,
-                        number: row.number,
-                        bio: row.bio,
-                        driverClass: row.driverClass,
-                        champ_id: row.champ_id,
-                        static_points: row.static_points || 0,
-                        static_heat: row.static_heat || 0,
-                        results: []
-                    };
-                }
-                if (row.result_id) {
-                    driverMap[key].results.push({
-                        championship_event_id: row.championship_event_id,
-                        points: row.championship_points || 0,
-                        rank: row.rank,
-                        heat_wins: row.race_heat_wins || 0
-                    });
-                }
-            });
+            const wins = validResults.filter(r => r.rank === 1).length;
+            const seconds = validResults.filter(r => r.rank === 2).length;
+            const thirds = validResults.filter(r => r.rank === 3).length;
+            const fourths = validResults.filter(r => r.rank === 4).length;
+            const fifths = validResults.filter(r => r.rank === 5).length;
+            const heatWins = validResults.reduce((sum, r) => sum + (r.heat_wins || 0), 0);
 
-            // Calculate Points with Streicher Logic
-            const entries = Object.values(driverMap).map(d => {
-                const rules = classRules[d.class_id];
-                const validEventIds = rules ? rules.validEvents : new Set();
-                const discipline = rules ? rules.discipline : 'unknown';
-
-                // Filter results to only valid events for this class
-                const validResults = d.results.filter(r => validEventIds.has(r.championship_event_id));
-
-                // For Streicher logic: take all valid events, map points, then drop
-                const allEventScores = [];
-                validEventIds.forEach(champEventId => {
-                    const res = validResults.find(r => r.championship_event_id === champEventId);
-                    allEventScores.push(res ? res.points : 0);
-                });
-
-                // Sort descending
-                allEventScores.sort((a, b) => b - a);
-
-                let rawPoints = allEventScores.reduce((sum, p) => sum + p, 0);
-                let finalPoints = 0;
-
-                if (discipline === 'klasse' || discipline === 'endlauf') {
-                    // Drop last 1 (User correction from original code comment)
-                    const scoresToCount = allEventScores.slice(0, Math.max(0, allEventScores.length - 1));
-                    finalPoints = scoresToCount.reduce((sum, p) => sum + p, 0);
-                } else {
-                    finalPoints = rawPoints;
-                }
-
-                const hasRaces = validResults.length > 0;
-
-                const wins = validResults.filter(r => r.rank === 1).length;
-                const seconds = validResults.filter(r => r.rank === 2).length;
-                const thirds = validResults.filter(r => r.rank === 3).length;
-                const fourths = validResults.filter(r => r.rank === 4).length;
-                const fifths = validResults.filter(r => r.rank === 5).length;
-                const heatWins = validResults.reduce((sum, r) => sum + (r.heat_wins || 0), 0);
-
-                return {
-                    driver: {
-                        id: d.driver_id,
-                        name: d.name,
-                        bio: d.bio || "",
-                        avatarUrl: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=200',
-                    },
-                    team: d.team ? { id: 't_unknown', name: d.team } : undefined,
-                    car: d.car || "",
-                    number: d.number,
-                    driverClass: d.driverClass || "Unassigned",
-                    championships: d.champ_id ? [d.champ_id] : [],
-                    stats: {
-                        points: hasRaces ? finalPoints : d.static_points,
-                        rawPoints: hasRaces ? rawPoints : d.static_points,
-                        droppedPoints: hasRaces ? (rawPoints - finalPoints) : 0,
-                        wins: hasRaces ? wins : 0,
-                        secondPlaces: hasRaces ? seconds : 0,
-                        thirdPlaces: hasRaces ? thirds : 0,
-                        fourthPlaces: hasRaces ? fourths : 0,
-                        fifthPlaces: hasRaces ? fifths : 0,
-                        heatWins: hasRaces ? heatWins : d.static_heat,
-                        podiums: hasRaces ? (wins + seconds + thirds) : 0,
-                        seasonRank: 0,
-                    },
-                    _classId: d.class_id
-                };
-            });
-
-            // Recalculate Season Ranks (Grouped by Class ID)
-            const byClass = {};
-            entries.forEach(e => {
-                const key = e._classId || e.driverClass;
-                if (!byClass[key]) byClass[key] = [];
-                byClass[key].push(e);
-            });
-
-            Object.keys(byClass).forEach(key => {
-                byClass[key].sort((a, b) => b.stats.points - a.stats.points);
-                byClass[key].forEach((e, idx) => {
-                    e.stats.seasonRank = idx + 1;
-                });
-            });
-
-            const sortedEntries = Object.values(byClass).flat();
-
-            sortedEntries.sort((a, b) => {
-                if (a.driverClass < b.driverClass) return -1;
-                if (a.driverClass > b.driverClass) return 1;
-                return a.stats.seasonRank - b.stats.seasonRank;
-            });
-
-            res.json(sortedEntries);
+            return {
+                driver: {
+                    id: d.driver_id,
+                    name: d.name,
+                    bio: d.bio || "",
+                    avatarUrl: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?auto=format&fit=crop&q=80&w=200',
+                },
+                team: d.team ? { id: 't_unknown', name: d.team } : undefined,
+                car: d.car || "",
+                number: d.number,
+                driverClass: d.driverClass || "Unassigned",
+                championships: d.champ_id ? [d.champ_id] : [],
+                stats: {
+                    points: hasRaces ? finalPoints : d.static_points,
+                    rawPoints: hasRaces ? rawPoints : d.static_points,
+                    droppedPoints: hasRaces ? (rawPoints - finalPoints) : 0,
+                    wins: hasRaces ? wins : 0,
+                    secondPlaces: hasRaces ? seconds : 0,
+                    thirdPlaces: hasRaces ? thirds : 0,
+                    fourthPlaces: hasRaces ? fourths : 0,
+                    fifthPlaces: hasRaces ? fifths : 0,
+                    heatWins: hasRaces ? heatWins : d.static_heat,
+                    podiums: hasRaces ? (wins + seconds + thirds) : 0,
+                    seasonRank: 0,
+                },
+                _classId: d.class_id
+            };
         });
-    });
+
+        // Recalculate Season Ranks (Grouped by Class ID)
+        const byClass = {};
+        entries.forEach(e => {
+            const key = e._classId || e.driverClass;
+            if (!byClass[key]) byClass[key] = [];
+            byClass[key].push(e);
+        });
+
+        Object.keys(byClass).forEach(key => {
+            byClass[key].sort((a, b) => b.stats.points - a.stats.points);
+            byClass[key].forEach((e, idx) => {
+                e.stats.seasonRank = idx + 1;
+            });
+        });
+
+        const sortedEntries = Object.values(byClass).flat();
+
+        sortedEntries.sort((a, b) => {
+            if (a.driverClass < b.driverClass) return -1;
+            if (a.driverClass > b.driverClass) return 1;
+            return a.stats.seasonRank - b.stats.seasonRank;
+        });
+
+        res.json(sortedEntries);
+
+    } catch (err) {
+        console.error("Database Error:", err.message);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // GET /:id/results (Specific Driver Results)
@@ -213,14 +209,13 @@ router.get('/:id/results', (req, res) => {
         ORDER BY pe.start_date DESC
     `;
 
-    db.all(query, [driverId], (err, rows) => {
-        if (err) {
-            console.error("Error fetching driver results:", err.message);
-            res.json([]);
-            return;
-        }
+    try {
+        const rows = db.prepare(query).all(driverId);
         res.json(rows || []);
-    });
+    } catch (err) {
+        console.error("Error fetching driver results:", err.message);
+        res.json([]);
+    }
 });
 
 export default router;

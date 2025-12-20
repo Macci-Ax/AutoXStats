@@ -44,7 +44,7 @@ const AdminEvents: React.FC = () => {
         selectedChampionships: [] as string[]
     });
 
-    const API_BASE = 'http://localhost:3000/api';
+    const API_BASE = '/api';
 
     // Load events and championships
     useEffect(() => {
@@ -348,8 +348,8 @@ const AdminEvents: React.FC = () => {
                                                 type="button"
                                                 onClick={() => toggleChampionship(c.id)}
                                                 className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition ${formData.selectedChampionships.includes(c.id)
-                                                        ? 'bg-red-600 border-red-500 text-white'
-                                                        : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'
+                                                    ? 'bg-red-600 border-red-500 text-white'
+                                                    : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'
                                                     }`}
                                             >
                                                 {c.id}

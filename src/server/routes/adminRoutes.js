@@ -8,12 +8,12 @@ const router = express.Router();
 router.get('/all-drivers', (req, res) => {
     const db = getDb();
     const query = "SELECT id, name, start_number FROM drivers ORDER BY name";
-    db.all(query, [], (err, rows) => {
-        if (err) {
-            return res.status(400).json({ error: err.message });
-        }
+    try {
+        const rows = db.prepare(query).all();
         res.json(rows);
-    });
+    } catch (err) {
+        return res.status(400).json({ error: err.message });
+    }
 });
 
 // GET /driver-results (For editing)
@@ -43,12 +43,12 @@ router.get('/driver-results', (req, res) => {
         ORDER BY e.date DESC
     `;
 
-    db.all(query, [driver_id], (err, rows) => {
-        if (err) {
-            return res.status(400).json({ error: err.message });
-        }
+    try {
+        const rows = db.prepare(query).all(driver_id);
         res.json(rows);
-    });
+    } catch (err) {
+        return res.status(400).json({ error: err.message });
+    }
 });
 
 // GET /physical-events (Admin List)
@@ -64,8 +64,8 @@ router.get('/physical-events', requireAdmin, (req, res) => {
         ORDER BY pe.start_date DESC
     `;
 
-    db.all(query, [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
+    try {
+        const rows = db.prepare(query).all();
 
         const events = rows.map(pe => {
             const championships = [];
@@ -87,7 +87,9 @@ router.get('/physical-events', requireAdmin, (req, res) => {
             };
         });
         res.json(events);
-    });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
 });
 
 // POST /physical-events (Create)
@@ -101,31 +103,32 @@ router.post('/physical-events', requireAdmin, (req, res) => {
 
     const physicalId = 'pe_' + Date.now();
 
-    db.run(
-        `INSERT INTO physical_events (id, title, start_date, end_date, location, description, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [physicalId, title, startDate, endDate || startDate, location || '', description || '', status || 'upcoming'],
-        function (err) {
-            if (err) return res.status(500).json({ error: err.message });
+    try {
+        db.prepare(
+            `INSERT INTO physical_events (id, title, start_date, end_date, location, description, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`
+        ).run(physicalId, title, startDate, endDate || startDate, location || '', description || '', status || 'upcoming');
 
-            // Add championship events if provided
-            if (championships && Array.isArray(championships)) {
-                championships.forEach((champ) => {
-                    const ceId = 'ce_' + Date.now() + '_' + Math.round(Math.random() * 1000);
-                    db.run(
-                        `INSERT INTO championship_events (id, physical_event_id, championship_id, has_results)
-                         VALUES (?, ?, ?, ?)`,
-                        [ceId, physicalId, champ.championshipId, champ.hasResults ? 1 : 0]
-                    );
-                });
-            }
+        // Add championship events if provided
+        if (championships && Array.isArray(championships)) {
+            const insertChampStmt = db.prepare(
+                `INSERT INTO championship_events (id, physical_event_id, championship_id, has_results)
+                 VALUES (?, ?, ?, ?)`
+            );
 
-            res.json({
-                message: "Event created successfully",
-                eventId: physicalId
+            championships.forEach((champ) => {
+                const ceId = 'ce_' + Date.now() + '_' + Math.round(Math.random() * 1000);
+                insertChampStmt.run(ceId, physicalId, champ.championshipId, champ.hasResults ? 1 : 0);
             });
         }
-    );
+
+        res.json({
+            message: "Event created successfully",
+            eventId: physicalId
+        });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
 });
 
 // PUT /physical-events/:id (Update)
@@ -134,17 +137,18 @@ router.put('/physical-events/:id', requireAdmin, (req, res) => {
     const { title, startDate, endDate, location, description, status } = req.body;
     const db = getDb();
 
-    db.run(
-        `UPDATE physical_events 
-         SET title = ?, start_date = ?, end_date = ?, location = ?, description = ?, status = ?
-         WHERE id = ?`,
-        [title, startDate, endDate, location, description, status, id],
-        function (err) {
-            if (err) return res.status(500).json({ error: err.message });
-            if (this.changes === 0) return res.status(404).json({ error: "Event not found" });
-            res.json({ message: "Event updated successfully" });
-        }
-    );
+    try {
+        const info = db.prepare(
+            `UPDATE physical_events 
+             SET title = ?, start_date = ?, end_date = ?, location = ?, description = ?, status = ?
+             WHERE id = ?`
+        ).run(title, startDate, endDate, location, description, status, id);
+
+        if (info.changes === 0) return res.status(404).json({ error: "Event not found" });
+        res.json({ message: "Event updated successfully" });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
 });
 
 // DELETE /physical-events/:id (Delete)
@@ -152,32 +156,29 @@ router.delete('/physical-events/:id', requireAdmin, (req, res) => {
     const { id } = req.params;
     const db = getDb();
 
-    // Check for results first
-    db.get(
-        `SELECT COUNT(*) as count FROM race_results rr
-         JOIN championship_events ce ON rr.championship_event_id = ce.id
-         WHERE ce.physical_event_id = ?`,
-        [id],
-        (err, row) => {
-            if (err) return res.status(500).json({ error: err.message });
-            if (row.count > 0) {
-                return res.status(400).json({
-                    error: "Cannot delete event with existing results",
-                    resultCount: row.count
-                });
-            }
+    try {
+        // Check for results first
+        const row = db.prepare(
+            `SELECT COUNT(*) as count FROM race_results rr
+             JOIN championship_events ce ON rr.championship_event_id = ce.id
+             WHERE ce.physical_event_id = ?`
+        ).get(id);
 
-            // Delete championship_events first, then physical_event
-            db.run(`DELETE FROM championship_events WHERE physical_event_id = ?`, [id], (err) => {
-                if (err) return res.status(500).json({ error: err.message });
-
-                db.run(`DELETE FROM physical_events WHERE id = ?`, [id], function (err) {
-                    if (err) return res.status(500).json({ error: err.message });
-                    res.json({ message: "Event deleted successfully" });
-                });
+        if (row.count > 0) {
+            return res.status(400).json({
+                error: "Cannot delete event with existing results",
+                resultCount: row.count
             });
         }
-    );
+
+        // Delete championship_events first, then physical_event
+        db.prepare(`DELETE FROM championship_events WHERE physical_event_id = ?`).run(id);
+        db.prepare(`DELETE FROM physical_events WHERE id = ?`).run(id);
+
+        res.json({ message: "Event deleted successfully" });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
 });
 
 // POST /championship-events (Add championship to event)
@@ -191,20 +192,19 @@ router.post('/championship-events', requireAdmin, (req, res) => {
 
     const ceId = 'ce_' + Date.now() + '_' + Math.round(Math.random() * 1000);
 
-    db.run(
-        `INSERT INTO championship_events (id, physical_event_id, championship_id, has_results)
-         VALUES (?, ?, ?, ?)`,
-        [ceId, physicalEventId, championshipId, hasResults ? 1 : 0],
-        function (err) {
-            if (err) {
-                if (err.message.includes('UNIQUE')) {
-                    return res.status(400).json({ error: "This championship is already attached to this event" });
-                }
-                return res.status(500).json({ error: err.message });
-            }
-            res.json({ message: "Championship added successfully", championshipEventId: ceId });
+    try {
+        db.prepare(
+            `INSERT INTO championship_events (id, physical_event_id, championship_id, has_results)
+             VALUES (?, ?, ?, ?)`
+        ).run(ceId, physicalEventId, championshipId, hasResults ? 1 : 0);
+
+        res.json({ message: "Championship added successfully", championshipEventId: ceId });
+    } catch (err) {
+        if (err.message.includes('UNIQUE')) {
+            return res.status(400).json({ error: "This championship is already attached to this event" });
         }
-    );
+        return res.status(500).json({ error: err.message });
+    }
 });
 
 // DELETE /championship-events/:id (Remove championship from event)
@@ -212,46 +212,34 @@ router.delete('/championship-events/:id', requireAdmin, (req, res) => {
     const { id } = req.params;
     const db = getDb();
 
-    db.get(
-        `SELECT COUNT(*) as count FROM race_results WHERE championship_event_id = ?`,
-        [id],
-        (err, row) => {
-            if (err) return res.status(500).json({ error: err.message });
-            if (row.count > 0) {
-                return res.status(400).json({
-                    error: "Cannot remove championship with existing results",
-                    resultCount: row.count
-                });
-            }
+    try {
+        const row = db.prepare(
+            `SELECT COUNT(*) as count FROM race_results WHERE championship_event_id = ?`
+        ).get(id);
 
-            db.run(`DELETE FROM championship_events WHERE id = ?`, [id], function (err) {
-                if (err) return res.status(500).json({ error: err.message });
-                res.json({ message: "Championship removed successfully" });
+        if (row.count > 0) {
+            return res.status(400).json({
+                error: "Cannot remove championship with existing results",
+                resultCount: row.count
             });
         }
-    );
+
+        db.prepare(`DELETE FROM championship_events WHERE id = ?`).run(id);
+        res.json({ message: "Championship removed successfully" });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
 });
 
 // GET /championships (List)
 router.get('/championships', (req, res) => {
     const db = getDb();
-    db.all('SELECT * FROM championships ORDER BY name', [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
+    try {
+        const rows = db.prepare('SELECT * FROM championships ORDER BY name').all();
         res.json(rows);
-    });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
 });
 
 export default router;
-
-// PUT /results/:id (Update result) - Note: Base path includes /api/admin? Or handled in main app?
-// The original was /api/results/:id.
-// If I mount this router at /api/admin, then this becomes /api/admin/results/:id
-// But the frontend might expect /api/results/:id.
-// I should probably put this in a resultRoutes.js or keep it here and mount appropriately.
-// Let's create `resultRoutes.js` for this specific endpoint if it's general purpose,
-// but it requires admin. I'll put it here and decide mounting later or make a dedicated router file.
-// Actually, `driver-results` above is for admin.
-// I'll keep it here and assume I mount it or handle it.
-// Wait, `PUT /api/results/:id` was top level. It requires admin though.
-// I will create `resultRoutes.js` for result manipulation and export it.
-// Or just handle it in `adminRoutes.js` if it is strictly admin.

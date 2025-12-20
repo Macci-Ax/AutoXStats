@@ -28,13 +28,12 @@ router.get('/race-results', (req, res) => {
         ORDER BY rr.rank
     `;
 
-    db.all(query, [event_id, class_id], (err, rows) => {
-        if (err) {
-            res.status(400).json({ error: err.message });
-            return;
-        }
+    try {
+        const rows = db.prepare(query).all(event_id, class_id);
         res.json(rows);
-    });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
 });
 
 // PUT /results/:id (Update race result)
@@ -53,18 +52,18 @@ router.put('/results/:id', requireAdmin, (req, res) => {
         WHERE id = ?
     `;
 
-    db.run(query, [rank, points, championship_points, car, start_number, resultId], function (err) {
-        if (err) {
-            console.error("Error updating result:", err.message);
-            res.status(400).json({ error: err.message });
-            return;
-        }
-        if (this.changes === 0) {
+    try {
+        const info = db.prepare(query).run(rank, points, championship_points, car, start_number, resultId);
+
+        if (info.changes === 0) {
             res.status(404).json({ error: "Result not found" });
             return;
         }
-        res.json({ message: "Result updated successfully", changes: this.changes });
-    });
+        res.json({ message: "Result updated successfully", changes: info.changes });
+    } catch (err) {
+        console.error("Error updating result:", err.message);
+        res.status(400).json({ error: err.message });
+    }
 });
 
 export default router;

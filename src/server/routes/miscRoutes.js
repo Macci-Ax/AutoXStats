@@ -14,41 +14,50 @@ router.get('/years', (req, res) => {
         WHERE ce.has_results = 1
         ORDER BY year DESC
     `;
-    db.all(query, [], (err, rows) => {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
+    try {
+        const rows = db.prepare(query).all();
         res.json(rows.map(r => r.year));
-    });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
 });
 
 // GET /classes
 router.get('/classes', (req, res) => {
     const db = getDb();
     const query = "SELECT * FROM classes ORDER BY name";
-    db.all(query, [], (err, rows) => {
-        if (err) {
-            res.status(400).json({ error: err.message });
-            return;
-        }
+    try {
+        const rows = db.prepare(query).all();
         res.json(rows);
-    });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
 });
 
 // GET /leaderboard/random-class
 router.get('/leaderboard/random-class', (req, res) => {
     const db = getDb();
 
+    const championship = req.query.championship;
+    console.log("Request for random class. Champ filter:", championship);
+
     // First get all classes that have drivers
-    const classesQuery = `
-        SELECT DISTINCT c.id, c.name 
+    let classesQuery = `
+        SELECT DISTINCT c.id, c.name, c.championship_id 
         FROM classes c 
         JOIN driver_participations dp ON c.id = dp.class_id 
         WHERE dp.points > 0
     `;
 
-    db.all(classesQuery, [], (err, classes) => {
-        if (err || !classes || classes.length === 0) {
+    const params = [];
+    if (championship) {
+        classesQuery += ` AND c.championship_id = ?`;
+        params.push(championship);
+    }
+
+    try {
+        const classes = db.prepare(classesQuery).all(...params);
+        if (!classes || classes.length === 0) {
             return res.json({ className: 'Keine Klasse', drivers: [] });
         }
 
@@ -56,32 +65,31 @@ router.get('/leaderboard/random-class', (req, res) => {
         const classId = randomClass.id;
 
         const driversQuery = `
-            SELECT 
-                d.id, d.name, d.team, d.car, 
-                dp.points as total_points
+    SELECT
+    d.id, d.name, d.team, d.car,
+        dp.points as total_points
             FROM drivers d
             JOIN driver_participations dp ON d.id = dp.driver_id
             WHERE dp.class_id = ?
-            ORDER BY dp.points DESC
+        ORDER BY dp.points DESC
             LIMIT 3
         `;
 
-        db.all(driversQuery, [classId], (err, drivers) => {
-            if (err) {
-                return res.json({ className: randomClass.name, drivers: [] });
-            }
-            res.json({
-                className: randomClass.name,
-                drivers: drivers.map(d => ({
-                    id: d.id,
-                    name: d.name,
-                    team: d.team || '',
-                    car: d.car || '',
-                    points: d.total_points
-                }))
-            });
+        const drivers = db.prepare(driversQuery).all(classId);
+        res.json({
+            className: randomClass.name,
+            championship: randomClass.championship_id,
+            drivers: drivers.map(d => ({
+                id: d.id,
+                name: d.name,
+                team: d.team || '',
+                car: d.car || '',
+                points: d.total_points
+            }))
         });
-    });
+    } catch (err) {
+        return res.json({ className: 'Fehler', drivers: [] });
+    }
 });
 
 // GET /youtube-feed

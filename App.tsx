@@ -7,8 +7,8 @@ import { Gallery } from './pages/Gallery';
 import { Profile } from './pages/Profile';
 import { ProfileEdit } from './pages/ProfileEdit';
 import { PublicProfile } from './pages/PublicProfile';
-import AdminResults from './pages/AdminResults';
-import AdminEvents from './pages/AdminEvents';
+import Admin from './pages/Admin';
+import DriverProfileEditor from './pages/DriverProfileEditor';
 import { ChatAssistant } from './components/ChatAssistant';
 import Login from './pages/Login';
 import { Register } from './pages/Register';
@@ -32,8 +32,8 @@ const App: React.FC = () => {
 
   useEffect(() => {
     Promise.all([
-      fetch('http://localhost:3000/api/events').then(r => r.json()),
-      fetch('http://localhost:3000/api/drivers').then(r => r.json())
+      fetch('/api/events').then(r => r.json()),
+      fetch('/api/drivers').then(r => r.json())
     ]).then(([events, drivers]) => {
       const eStr = Array.isArray(events) ? (events as Event[]).map(e => `${e.name} am ${e.date} (${e.status})`).join(', ') : '';
       const dStr = Array.isArray(drivers) ? (drivers as Driver[]).map(d => `${d.name} (${d.points} Punkte)`).join(', ') : '';
@@ -59,15 +59,12 @@ const App: React.FC = () => {
       case 'admin':
         // Auth Protection for Admin
         if (!user || user.role !== 'ADMIN') return <Login onNavigate={navigate} />;
-        return <AdminResults />;
-      case 'admin-events':
-        // Auth Protection for Admin Events
-        if (!user || user.role !== 'ADMIN') return <Login onNavigate={navigate} />;
-        return <AdminEvents />;
+        return <Admin />;
       case 'login': return <Login onNavigate={navigate} />;
       case 'register': return <Register onNavigate={navigate} />;
       case 'profile': return user ? <Profile user={user} driverData={MOCK_DRIVERS.find(d => d.id === user.driverId)} onLogout={() => { /* Logout handled by context usually or component */ setPage('home'); }} onUpdate={() => { }} /> : <Home onNavigate={navigate} />;
       case 'profile-edit': return user ? <ProfileEdit onNavigate={navigate} /> : <Login onNavigate={navigate} />;
+      case 'my-driver-profile': return user && user.driverId ? <DriverProfileEditor user={user} /> : <Home onNavigate={navigate} />;
       case 'calendar': return user ? <Calendar onNavigate={navigate} /> : <Login onNavigate={navigate} />;
       default: return <Home onNavigate={navigate} />;
     }

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { User, Instagram, Facebook, Youtube, ArrowLeft, CalendarDays, MapPin } from 'lucide-react';
+import { User, Instagram, Facebook, Youtube, ArrowLeft, CalendarDays, MapPin, MessageSquare } from 'lucide-react';
+import { StatusUpdate } from '../types';
+import { StatusUpdateList } from '../components/StatusUpdateList';
 
 interface PublicProfileData {
     userId: string;
@@ -25,17 +27,19 @@ interface PublicProfileProps {
 export const PublicProfile: React.FC<PublicProfileProps> = ({ userId, onBack }) => {
     const [profile, setProfile] = useState<PublicProfileData | null>(null);
     const [events, setEvents] = useState<PublicEvent[]>([]);
+    const [statusUpdates, setStatusUpdates] = useState<StatusUpdate[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         fetchPublicProfile();
         fetchPublicParticipations();
+        fetchStatusUpdates();
     }, [userId]);
 
     const fetchPublicProfile = async () => {
         try {
-            const res = await fetch(`http://localhost:3000/api/profile/${userId}`);
+            const res = await fetch(`/api/profile/${userId}`);
             if (!res.ok) {
                 if (res.status === 404) {
                     setError('Benutzer nicht gefunden');
@@ -54,13 +58,25 @@ export const PublicProfile: React.FC<PublicProfileProps> = ({ userId, onBack }) 
 
     const fetchPublicParticipations = async () => {
         try {
-            const res = await fetch(`http://localhost:3000/api/users/${userId}/participations`);
+            const res = await fetch(`/api/users/${userId}/participations`);
             if (res.ok) {
                 const data = await res.json();
                 setEvents(data);
             }
         } catch (err) {
             // Silently fail - participations are optional
+        }
+    };
+
+    const fetchStatusUpdates = async () => {
+        try {
+            const res = await fetch(`/api/status/user/${userId}`);
+            if (res.ok) {
+                const data = await res.json();
+                setStatusUpdates(data.statusUpdates || []);
+            }
+        } catch (err) {
+            // Silently fail - status updates are optional
         }
     };
 
@@ -188,6 +204,19 @@ export const PublicProfile: React.FC<PublicProfileProps> = ({ userId, onBack }) 
                                         </div>
                                     ))}
                                 </div>
+                            </div>
+                        )}
+
+                        {statusUpdates.length > 0 && (
+                            <div>
+                                <h3 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
+                                    <MessageSquare className="h-4 w-4" />
+                                    Status-Updates
+                                </h3>
+                                <StatusUpdateList
+                                    statusUpdates={statusUpdates}
+                                    emptyMessage="Keine Status-Updates."
+                                />
                             </div>
                         )}
                     </div>
