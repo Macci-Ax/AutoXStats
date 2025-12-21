@@ -29,19 +29,22 @@ async function setupUsers() {
             console.log("Dropped existing users table.");
         });
 
-        // Create table with created_at field
+        // Create table with email verification fields
         db.run(`CREATE TABLE users (
             id TEXT PRIMARY KEY,
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             role TEXT NOT NULL,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            email_verified INTEGER DEFAULT 0,
+            email_verification_token TEXT,
+            email_verification_expires_at TEXT
         )`, (err) => {
             if (err) {
                 console.error("Error creating table:", err.message);
                 return;
             }
-            console.log("Users table created with created_at field.");
+            console.log("Users table created with email verification fields.");
         });
 
         // Insert Admin

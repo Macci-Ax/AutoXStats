@@ -12,6 +12,7 @@ import DriverProfileEditor from './pages/DriverProfileEditor';
 import { ChatAssistant } from './components/ChatAssistant';
 import Login from './pages/Login';
 import { Register } from './pages/Register';
+import { VerifyEmail } from './pages/VerifyEmail';
 import { User } from './types';
 import { useAuth } from './context/AuthContext';
 
@@ -41,6 +42,14 @@ const App: React.FC = () => {
     }).catch(err => console.error("Failed to load context:", err));
   }, []);
 
+  // Handle URL-based routing for email verification
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === '/verify-email') {
+      setPage('verify-email');
+    }
+  }, []);
+
   // Create simple onNavigate wrapper to handle routing
   const navigate = (newPage: string) => setPage(newPage);
 
@@ -62,6 +71,7 @@ const App: React.FC = () => {
         return <Admin />;
       case 'login': return <Login onNavigate={navigate} />;
       case 'register': return <Register onNavigate={navigate} />;
+      case 'verify-email': return <VerifyEmail onNavigate={navigate} />;
       case 'profile': return user ? <Profile user={user} driverData={MOCK_DRIVERS.find(d => d.id === user.driverId)} onLogout={() => { /* Logout handled by context usually or component */ setPage('home'); }} onUpdate={() => { }} /> : <Home onNavigate={navigate} />;
       case 'profile-edit': return user ? <ProfileEdit onNavigate={navigate} /> : <Login onNavigate={navigate} />;
       case 'my-driver-profile': return user && user.driverId ? <DriverProfileEditor user={user} /> : <Home onNavigate={navigate} />;

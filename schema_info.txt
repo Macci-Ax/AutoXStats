@@ -16,7 +16,7 @@ CREATE TABLE photos (
         event_id TEXT NOT NULL,
         storage_path TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
+    , photographer TEXT, physical_event_id TEXT);
 
 CREATE TABLE photo_driver_tags (
         photo_id TEXT NOT NULL,
@@ -64,17 +64,6 @@ CREATE TABLE drivers (
       FOREIGN KEY (current_class_id) REFERENCES classes(id)
   );
 
-CREATE TABLE events (
-      id TEXT PRIMARY KEY,
-      championship_id TEXT,
-      name TEXT NOT NULL,
-      date TEXT NOT NULL,
-      location TEXT,
-      status TEXT,
-      winner_driver_id TEXT,
-      FOREIGN KEY (championship_id) REFERENCES championships(id)
-  );
-
 CREATE TABLE race_results (
       id TEXT PRIMARY KEY,
       event_id TEXT,
@@ -89,7 +78,7 @@ CREATE TABLE race_results (
       car TEXT,
       reconstructed INTEGER DEFAULT 0,
       license_type TEXT DEFAULT 'DRCV',
-      championship_points INTEGER DEFAULT 0,
+      championship_points INTEGER DEFAULT 0, championship_event_id TEXT,
       FOREIGN KEY (event_id) REFERENCES events(id),
       FOREIGN KEY (driver_id) REFERENCES drivers(id),
       FOREIGN KEY (class_id) REFERENCES classes(id)
@@ -106,4 +95,100 @@ CREATE TABLE driver_participations (
       FOREIGN KEY (driver_id) REFERENCES drivers(id),
       FOREIGN KEY (class_id) REFERENCES classes(id)
   );
+
+CREATE TABLE class_events (
+      class_id   TEXT NOT NULL,
+      event_id   TEXT NOT NULL,
+      discipline TEXT NOT NULL CHECK (discipline IN (
+        'klasse',
+        'endlauf',
+        'langstrecke',
+        'supercup'
+      )),
+      is_counting BOOLEAN NOT NULL DEFAULT TRUE, championship_event_id TEXT,
+      PRIMARY KEY (class_id, event_id, discipline),
+      FOREIGN KEY (class_id) REFERENCES classes(id),
+      FOREIGN KEY (event_id) REFERENCES events(id)
+    );
+
+CREATE TABLE photo_tags (
+            id TEXT PRIMARY KEY,
+            photo_id TEXT,
+            driver_id TEXT,
+            FOREIGN KEY(photo_id) REFERENCES photos(id),
+            FOREIGN KEY(driver_id) REFERENCES drivers(id)
+        );
+
+CREATE TABLE physical_events (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                start_date TEXT NOT NULL,
+                end_date TEXT,
+                location TEXT,
+                description TEXT,
+                status TEXT DEFAULT 'upcoming'
+            );
+
+CREATE TABLE championship_events (
+                id TEXT PRIMARY KEY,
+                physical_event_id TEXT NOT NULL,
+                championship_id TEXT NOT NULL,
+                has_results INTEGER DEFAULT 0,
+                FOREIGN KEY (physical_event_id) REFERENCES physical_events(id),
+                FOREIGN KEY (championship_id) REFERENCES championships(id),
+                UNIQUE(physical_event_id, championship_id)
+            );
+
+CREATE TABLE users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        , driver_id TEXT, email_verified INTEGER DEFAULT 0, email_verification_token TEXT, email_verification_expires_at TEXT);
+
+CREATE TABLE user_profiles (
+        user_id TEXT PRIMARY KEY REFERENCES users(id),
+        display_name TEXT,
+        bio TEXT,
+        avatar_image_id TEXT,
+        social_instagram TEXT,
+        social_facebook TEXT,
+        social_youtube TEXT,
+        is_display_name_public INTEGER DEFAULT 0,
+        is_bio_public INTEGER DEFAULT 0,
+        is_social_public INTEGER DEFAULT 0,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+CREATE TABLE event_participations (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id),
+        physical_event_id TEXT NOT NULL REFERENCES physical_events(id),
+        is_public INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, physical_event_id)
+    );
+
+CREATE TABLE status_updates (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            driver_id TEXT,
+            content TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (driver_id) REFERENCES drivers(id)
+        );
+
+CREATE TABLE driver_requests (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            driver_id TEXT NOT NULL,
+            status TEXT DEFAULT 'PENDING',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id),
+            FOREIGN KEY(driver_id) REFERENCES drivers(id)
+        );
+
+CREATE TABLE sqlite_sequence(name,seq);
 

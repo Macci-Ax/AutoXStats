@@ -82,7 +82,7 @@ app.use('/api/requests', requestRoutes);
 
 
 // Catch-all for SPA (must be last)
-app.get(/.*/, (req, res) => {
+app.get('*', (req, res) => {
     res.sendFile(path.resolve('dist', 'index.html'));
 });
 
