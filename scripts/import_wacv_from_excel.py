@@ -122,8 +122,8 @@ def setup_wacv_infrastructure(cursor):
             VALUES (?, ?, 'WACV', 1)
         """, (ce_id, pe_id))
         
-        event_ids.append(ce_id)
-        print(f"  Created event: {event['name']} -> {ce_id}")
+        event_ids.append((ce_id, pe_id))
+        print(f"  Created event: {event['name']} -> PE: {pe_id}, CE: {ce_id}")
     
     return event_ids
 
@@ -143,7 +143,7 @@ def find_or_create_class(cursor, sheet_name, event_ids):
     # Create class_events for each event (discipline = 'klasse' for regular, 'langstrecke' for Langstrecke)
     discipline = 'langstrecke' if 'langstrecke' in sheet_name.lower() else 'klasse'
     
-    for ce_id in event_ids:
+    for ce_id, pe_id in event_ids:
         cursor.execute("""
             INSERT OR REPLACE INTO class_events (class_id, event_id, discipline)
             VALUES (?, ?, ?)
@@ -225,7 +225,7 @@ def process_sheet(cursor, sheet, sheet_name, event_ids):
             """, (driver_id, class_id, total_points, rank))
             
             # Insert race results for each event
-            for col_idx, ce_id in event_columns.items():
+            for col_idx, (ce_id, pe_id) in event_columns.items():
                 if col_idx < len(values) and values[col_idx]:
                     try:
                         pts = int(values[col_idx])
@@ -234,9 +234,9 @@ def process_sheet(cursor, sheet, sheet_name, event_ids):
                             res_id = f"w_res_{driver_id}_{ce_id}"
                             cursor.execute("""
                                 INSERT OR REPLACE INTO race_results 
-                                (id, championship_event_id, driver_id, class_id, championship_points, rank)
-                                VALUES (?, ?, ?, ?, ?, ?)
-                            """, (res_id, ce_id, driver_id, class_id, pts, rank))
+                                (id, event_id, championship_event_id, driver_id, class_id, championship_points, points, rank, license_type)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'WACV')
+                            """, (res_id, pe_id, ce_id, driver_id, class_id, pts, pts, rank))
                     except (ValueError, TypeError):
                         pass
             

@@ -75,6 +75,11 @@ router.get('/:id/results', (req, res) => {
             COALESCE(r.start_number, d.start_number) as start_number,
             COALESCE(r.car, d.car) as car,
             r.rank,
+            r.run_1,
+            r.run_2,
+            r.run_3,
+            r.run_4,
+            r.event_points,
             COALESCE(r.championship_points, r.points) as championship_points
         FROM physical_events pe
         JOIN championship_events ce ON pe.id = ce.physical_event_id

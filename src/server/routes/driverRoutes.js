@@ -3,8 +3,16 @@ import { getDb } from '../config/db.js';
 
 const router = express.Router();
 
+
+
+// GET /debug
+router.get('/debug', (req, res) => {
+    res.json({ message: "Debug route working!", cwd: process.cwd() });
+});
+
 // GET / (All Drivers with stats)
 router.get('/', (req, res) => {
+    try { fs.appendFileSync('c:/Users/macci/Documents/AutoXStats/debug_proof.txt', `Route Hit at ${new Date().toISOString()}\n`); } catch (e) { }
     const year = req.query.year || String(new Date().getFullYear());
     const db = getDb();
 
@@ -17,7 +25,7 @@ router.get('/', (req, res) => {
         WHERE strftime('%Y', pe.start_date) = ?
     `;
 
-    // 2. Fetch All Results (The Data)
+    // 2. Fetch All Results (The Data) - including license_type for TL rule
     const dataQuery = `
         SELECT 
             d.id as driver_id,
@@ -35,7 +43,8 @@ router.get('/', (req, res) => {
             r.championship_event_id,
             r.championship_points,
             r.rank,
-            r.heat_wins as race_heat_wins
+            r.heat_wins as race_heat_wins,
+            r.license_type
         FROM drivers d
         JOIN driver_participations dp ON d.id = dp.driver_id
         JOIN classes c ON dp.class_id = c.id
@@ -59,7 +68,7 @@ router.get('/', (req, res) => {
 
         const dataRows = db.prepare(dataQuery).all(year);
 
-        // Group by Driver+Class
+        // Step 3: Group by Driver+Class and use adjusted points
         const driverMap = {};
 
         dataRows.forEach(row => {
@@ -81,6 +90,7 @@ router.get('/', (req, res) => {
                 };
             }
             if (row.result_id) {
+                // Use stored championship_points directly to allow manual overrides
                 driverMap[key].results.push({
                     championship_event_id: row.championship_event_id,
                     points: row.championship_points || 0,

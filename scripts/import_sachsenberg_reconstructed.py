@@ -1,8 +1,9 @@
 import pdfplumber
 import sqlite3
 import re
+import os
 
-PDF_PATH = 'pdf/Meisterschaftswertung.pdf'
+PDF_PATH = os.path.join('pdf', '2025', 'Meisterschaftswertung.pdf')
 DB_PATH = 'autox.db'
 
 # Use spatial approach: extract words and match by X coordinate
@@ -79,12 +80,20 @@ def import_sachsenberg():
     
     event_id = 'evt_sachsenberg_2025_rec'
     
-    cursor.execute("DELETE FROM race_results WHERE event_id = ?", (event_id,))
-    cursor.execute("DELETE FROM events WHERE id = ?", (event_id,))
+    # Create Event
+    # Physical Event
     cursor.execute("""
-        INSERT INTO events (id, championship_id, name, date, location, status) 
-        VALUES (?, 'DRCV', 'Sachsenberg (Reconstructed)', '2025-04-27', 'Sachsenberg', 'reconstructed')
+        INSERT OR REPLACE INTO physical_events (id, title, start_date, location, status)
+        VALUES (?, 'Sachsenberg (Reconstructed)', '2025-04-27', 'Sachsenberg', 'finished')
     """, (event_id,))
+    
+    # Championship Event
+    ce_id = f"ce_{event_id}_DRCV"
+    cursor.execute("DELETE FROM championship_events WHERE physical_event_id = ?", (event_id,))
+    cursor.execute("""
+        INSERT INTO championship_events (id, physical_event_id, championship_id, has_results)
+        VALUES (?, ?, 'DRCV', 1)
+    """, (ce_id, event_id))
     
     cursor.execute("SELECT id, start_number FROM drivers WHERE start_number IS NOT NULL")
     driver_lookup = {int(row[1]): row[0] for row in cursor.fetchall()}
@@ -190,11 +199,15 @@ def import_sachsenberg():
             if i > 0 and entry['points'] < entries[i-1]['points']:
                 rank = i + 1
             res_id = f"res_{event_id}_{entry['driver_id']}_{cls}"
+            # Insert into race_results with new schema
+            # We map the extracted 'points' to event_points (it was a specific event run)
+            # AND championship_points (since it contributes to championship)? 
+            # In reconstructed Sachsenberg, the 'points' extracted are the points for that event.
             cursor.execute("""
                 INSERT OR REPLACE INTO race_results 
-                (id, event_id, driver_id, class_id, rank, points, reconstructed, license_type)
-                VALUES (?, ?, ?, ?, ?, ?, 1, 'DRCV')
-            """, (res_id, event_id, entry['driver_id'], cls, rank, entry['points']))
+                (id, event_id, championship_event_id, driver_id, class_id, rank, points, championship_points, event_points, license_type)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'DRCV')
+            """, (res_id, event_id, ce_id, entry['driver_id'], cls, rank, entry['points'], entry['points'], entry['points']))
             inserted += 1
     
     conn.commit()

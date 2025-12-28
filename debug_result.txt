@@ -1,0 +1,51 @@
+
+--- Debugging Event: ce_evt_a328083f_DRCV (Class 6) ---
+Raw Results for Event:
+{"name":"Phillip Raiser","rank":1,"license":"TL"}
+{"name":"Dennis Hagedorn","rank":2,"license":"DRCV"}
+{"name":"Frank Staude","rank":3,"license":"DRCV"}
+{"name":"Jannis Görtemöller","rank":4,"license":"DRCV"}
+{"name":"Mika Noel Determann","rank":5,"license":"DRCV"}
+{"name":"Andreas Timm","rank":6,"license":"DRCV"}
+{"name":"Sebastian Fischer","rank":7,"license":"DRCV"}
+{"name":"Achim Spors","rank":8,"license":"DRCV"}
+{"name":"Justin Heckert","rank":9,"license":"DRCV"}
+Filtered DRCV Results:
+{"name":"Dennis Hagedorn","originalRank":2,"newRank":1,"points":9}
+{"name":"Frank Staude","originalRank":3,"newRank":2,"points":7}
+{"name":"Jannis Görtemöller","originalRank":4,"newRank":3,"points":6}
+{"name":"Mika Noel Determann","originalRank":5,"newRank":4,"points":5}
+{"name":"Andreas Timm","originalRank":6,"newRank":5,"points":4}
+{"name":"Sebastian Fischer","originalRank":7,"newRank":6,"points":3}
+{"name":"Achim Spors","originalRank":8,"newRank":7,"points":2}
+{"name":"Justin Heckert","originalRank":9,"newRank":8,"points":1}
+
+--- Dennis Hagedorn Calculation (Target Class: d_k6) ---
+Event: ce_evt_0fb89023_DRCV, Class: d_k6, Rank: 1, License: DRCV, Adjusted: 9 [MATCH]
+Event: ce_evt_17d6011c_DRCV, Class: d_k6, Rank: 2, License: DRCV, Adjusted: 7 [MATCH]
+Event: ce_evt_226b22d8_DRCV, Class: d_k6, Rank: 4, License: DRCV, Adjusted: 5 [MATCH]
+Event: ce_evt_26e4b9b4_DRCV, Class: d_k6, Rank: 1, License: DRCV, Adjusted: 9 [MATCH]
+Event: ce_evt_389eab05_DRCV, Class: d_k6, Rank: 3, License: DRCV, Adjusted: 6 [MATCH]
+Event: ce_evt_5530b170_DRCV, Class: d_k6, Rank: 3, License: DRCV, Adjusted: 6 [MATCH]
+Event: ce_evt_76e2caa7_DRCV, Class: d_k6, Rank: 3, License: DRCV, Adjusted: 6 [MATCH]
+Event: ce_evt_a328083f_DRCV, Class: d_k6, Rank: 2, License: DRCV, Adjusted: 9 [MATCH]
+Event: ce_evt_e856e003_DRCV, Class: d_k6, Rank: 3, License: DRCV, Adjusted: 6 [MATCH]
+Event: ce_evt_f12be9e9_DRCV, Class: d_k6, Rank: 2, License: DRCV, Adjusted: 7 [MATCH]
+Event: ce_evt_sachsenberg_2025_rec_DRCV, Class: d_k6, Rank: 2, License: DRCV, Adjusted: 7 [MATCH]
+Event: ce_evt_17d6011c_DRCV, Class: d_el_div2, Rank: 4, License: DRCV, Adjusted: 5 
+Event: ce_evt_226b22d8_DRCV, Class: d_el_div2, Rank: 4, License: DRCV, Adjusted: 5 
+Event: ce_evt_26e4b9b4_DRCV, Class: d_el_div2, Rank: 1, License: DRCV, Adjusted: 9 
+Event: ce_evt_389eab05_DRCV, Class: d_el_div2, Rank: 1, License: DRCV, Adjusted: 9 
+Event: ce_evt_5530b170_DRCV, Class: d_el_div2, Rank: 3, License: DRCV, Adjusted: 6 
+Event: ce_evt_76e2caa7_DRCV, Class: d_el_div2, Rank: 2, License: DRCV, Adjusted: 7 
+Event: ce_evt_a328083f_DRCV, Class: d_el_div2, Rank: 2, License: DRCV, Adjusted: 7 
+Event: ce_evt_e856e003_DRCV, Class: d_el_div2, Rank: 4, License: DRCV, Adjusted: 5 
+Event: ce_evt_f12be9e9_DRCV, Class: d_el_div2, Rank: 2, License: DRCV, Adjusted: 7 
+Event: ce_evt_sachsenberg_2025_rec_DRCV, Class: d_el_div2, Rank: 4, License: DRCV, Adjusted: 5 
+Event: ce_evt_26e4b9b4_DRCV, Class: d_sc_div2, Rank: 1, License: DRCV, Adjusted: 9 
+Event: ce_evt_389eab05_DRCV, Class: d_sc_div2, Rank: 1, License: DRCV, Adjusted: 9 
+Event: ce_evt_76e2caa7_DRCV, Class: d_sc_div2, Rank: 3, License: DRCV, Adjusted: 6 
+
+Raw Points (Klasse 6): 77
+Dropped Points: 5
+Final Points (Klasse 6): 72

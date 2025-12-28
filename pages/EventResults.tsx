@@ -26,6 +26,11 @@ interface Result {
     driver_name: string;
     driver_team?: string;
     championship?: string;
+    run_1?: number;
+    run_2?: number;
+    run_3?: number;
+    run_4?: number;
+    event_points?: number;
 }
 
 interface EventResultsProps {
@@ -85,6 +90,20 @@ export const EventResults: React.FC<EventResultsProps> = ({ eventId, onBack }) =
         return acc;
     }, {} as Record<string, Result[]>);
 
+    // FIX: Sort by points (descending) and re-calculate rank
+    Object.keys(groupedResults).forEach(className => {
+        groupedResults[className].sort((a, b) => {
+            const pointsA = a.championship_points || a.points || 0;
+            const pointsB = b.championship_points || b.points || 0;
+            return pointsB - pointsA;
+        });
+
+        // Assign rank based on position
+        groupedResults[className].forEach((result, index) => {
+            result.rank = index + 1;
+        });
+    });
+
     const sortedClassNames = Object.keys(groupedResults).sort((a, b) => {
         return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
     });
@@ -105,6 +124,19 @@ export const EventResults: React.FC<EventResultsProps> = ({ eventId, onBack }) =
     const selectedChampHasResults = eventInfo?.championships?.find(
         c => c.championship === selectedChampionship
     )?.hasResults;
+
+    const formatRuns = (r: Result) => {
+        if (r.run_1 === undefined && r.run_2 === undefined && r.run_3 === undefined && !r.event_points) return null;
+
+        const runs = [r.run_1, r.run_2, r.run_3];
+        if (r.run_4 !== null && r.run_4 !== undefined) runs.push(r.run_4);
+
+        // Check if any run data exists
+        if (runs.every(v => v === null || v === undefined) && !r.event_points) return null;
+
+        const runStr = runs.map(val => val !== undefined && val !== null ? val : '-').join('/');
+        return `${runStr} - ${r.event_points || 0} pkt`;
+    };
 
     if (loading) return <div className="text-center text-white py-12">Lade Ergebnisse...</div>;
 
@@ -179,6 +211,12 @@ export const EventResults: React.FC<EventResultsProps> = ({ eventId, onBack }) =
                                             <div className="text-xs text-slate-400 truncate">
                                                 {result.driver_team || 'Privatfahrer'}
                                             </div>
+                                            {/* Runs Display */}
+                                            {(result.run_1 !== null && result.run_1 !== undefined) && (
+                                                <div className="text-xs text-amber-500/80 mt-1 font-mono font-medium">
+                                                    {formatRuns(result)}
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Car & Number (Desktop) */}

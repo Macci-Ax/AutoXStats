@@ -75,9 +75,24 @@ const AdminResults: React.FC = () => {
             if (!selectedDriverId) return;
             setLoading(true);
             fetch(`${API_BASE}/admin/driver-results?driver_id=${selectedDriverId}`)
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error(`Server returned ${res.status}`);
+                    }
+                    return res.json();
+                })
                 .then(data => {
-                    setResults(data);
+                    if (Array.isArray(data)) {
+                        setResults(data);
+                    } else {
+                        console.error("API returned non-array:", data);
+                        setResults([]);
+                    }
+                    setLoading(false);
+                })
+                .catch(err => {
+                    console.error("Failed to fetch driver results:", err);
+                    setResults([]);
                     setLoading(false);
                 });
         }
@@ -133,7 +148,7 @@ const AdminResults: React.FC = () => {
     );
 
     // Derive available options from results (for Driver Mode)
-    const driverYears = Array.from(new Set(results.map(r => new Date(r.event_date).getFullYear()))).sort((a, b) => b - a);
+    const driverYears = Array.from(new Set(results.map(r => new Date(r.event_date).getFullYear()))).sort((a: number, b: number) => b - a);
 
     const driverClassesMap = new Map();
     results.forEach(r => {

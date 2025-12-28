@@ -26,8 +26,8 @@ router.get('/driver-results', (req, res) => {
         SELECT 
             rr.id,
             rr.class_id,
-            e.name as event_name,
-            e.date as event_date,
+            e.title as event_name,
+            e.start_date as event_date,
             c.name as class_name,
             COALESCE(rr.start_number, d.start_number) as start_number,
             COALESCE(rr.car, d.car) as car,
@@ -36,11 +36,11 @@ router.get('/driver-results', (req, res) => {
             rr.championship_points,
             d.name as driver_name
         FROM race_results rr
-        JOIN events e ON rr.event_id = e.id
+        JOIN physical_events e ON rr.event_id = e.id
         JOIN classes c ON rr.class_id = c.id
         JOIN drivers d ON rr.driver_id = d.id
         WHERE rr.driver_id = ?
-        ORDER BY e.date DESC
+        ORDER BY e.start_date DESC
     `;
 
     try {
