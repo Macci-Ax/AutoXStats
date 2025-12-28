@@ -122,3 +122,16 @@ export interface StatusUpdate {
   createdAt: string;
   authorEmail?: string;
 }
+
+export interface PartnerLink {
+  id?: string;
+  url: string;
+  type: 'YOUTUBE' | 'FACEBOOK' | 'INSTAGRAM' | 'TIKTOK' | 'WEBSITE' | 'OTHER';
+}
+
+export interface Partner {
+  id: string;
+  name: string;
+  description?: string;
+  links: PartnerLink[];
+}

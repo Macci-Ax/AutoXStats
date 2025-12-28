@@ -572,21 +572,24 @@ export const Drivers: React.FC<DriversProps> = ({ preSelectedDriverId, preSelect
                         onClick={() => setSelectedEntry(entry)}
                         className={itemClasses}
                       >
-                        <div className="relative">
-                          <img src={entry.driver.avatarUrl} alt={entry.driver.name} className="w-12 h-12 rounded-full object-cover border border-slate-600" />
-                          {index === 0 && <div className="absolute -top-1 -right-1 bg-slate-900 rounded-full p-0.5"><Medal size={16} className="text-yellow-500 fill-yellow-500/20" /></div>}
-                          {index === 1 && <div className="absolute -top-1 -right-1 bg-slate-900 rounded-full p-0.5"><Medal size={16} className="text-slate-400 fill-slate-400/20" /></div>}
-                          {index === 2 && <div className="absolute -top-1 -right-1 bg-slate-900 rounded-full p-0.5"><Medal size={16} className="text-amber-700 fill-amber-700/20" /></div>}
+                        <div className="flex items-center gap-4 flex-1 min-w-0">
+                          <div className="relative shrink-0">
+                            <img src={entry.driver.avatarUrl} alt={entry.driver.name} className="w-12 h-12 rounded-full object-cover border border-slate-600" />
+                            {index === 0 && <div className="absolute -top-1 -right-1 bg-slate-900 rounded-full p-0.5"><Medal size={16} className="text-yellow-500 fill-yellow-500/20" /></div>}
+                            {index === 1 && <div className="absolute -top-1 -right-1 bg-slate-900 rounded-full p-0.5"><Medal size={16} className="text-slate-400 fill-slate-400/20" /></div>}
+                            {index === 2 && <div className="absolute -top-1 -right-1 bg-slate-900 rounded-full p-0.5"><Medal size={16} className="text-amber-700 fill-amber-700/20" /></div>}
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-white truncate flex items-center gap-2">
+                              {entry.driver.name}
+                            </h3>
+                            <p className="text-sm text-slate-400 truncate">{entry.team ? entry.team.name : ''}</p>
+                            <p className="text-xs text-slate-500 truncate mt-1 pt-1 opacity-60">#{entry.number}</p>
+                          </div>
                         </div>
 
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-white truncate flex items-center gap-2">
-                            {entry.driver.name}
-                          </h3>
-                          <p className="text-sm text-slate-400 truncate">{entry.team ? entry.team.name : ''}</p>
-                          <p className="text-xs text-slate-500 truncate mt-1 pt-1 opacity-60">#{entry.number}</p>
-                        </div>
-                        <div className="text-right hidden sm:block">
+                        <div className="text-right shrink-0">
                           <div className="text-lg font-bold text-slate-200">{entry.stats.points} <span className="text-xs text-slate-500 font-normal">Pkt</span></div>
                           {(entry.stats.droppedPoints && entry.stats.droppedPoints > 0) ? (
                             <div className="text-xs text-slate-500">

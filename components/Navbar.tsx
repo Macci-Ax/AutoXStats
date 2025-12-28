@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, X, Trophy, Calendar, Users, Image, User, LogIn, Settings, Flag } from 'lucide-react';
+import { Menu, X, Trophy, Calendar, Users, Image, User, LogIn, Settings, Flag, Share2 } from 'lucide-react';
 
 interface NavbarProps {
   currentPage: string;
@@ -16,6 +16,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPage, onNavigate, user, o
     { id: 'events', label: 'Events', icon: Calendar },
     { id: 'drivers', label: 'Fahrer', icon: Users },
     { id: 'gallery', label: 'Galerie', icon: Image },
+    { id: 'partners', label: 'Partner', icon: Share2 },
     // Show Calendar for logged-in users
     ...(user ? [
       { id: 'calendar', label: 'Mein Kalender', icon: Calendar }

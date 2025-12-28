@@ -19,6 +19,23 @@ export const getDb = () => {
             FOREIGN KEY(photo_id) REFERENCES photos(id),
             FOREIGN KEY(driver_id) REFERENCES drivers(id)
         )`).run();
+
+        // Ensure partners table exists
+        dbInstance.prepare(`CREATE TABLE IF NOT EXISTS partners (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`).run();
+
+        // Ensure partner_links table exists
+        dbInstance.prepare(`CREATE TABLE IF NOT EXISTS partner_links (
+            id TEXT PRIMARY KEY,
+            partner_id TEXT NOT NULL,
+            url TEXT NOT NULL,
+            type TEXT NOT NULL,
+            FOREIGN KEY(partner_id) REFERENCES partners(id) ON DELETE CASCADE
+        )`).run();
     }
     return dbInstance;
 };

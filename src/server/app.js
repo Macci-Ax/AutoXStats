@@ -15,6 +15,7 @@ import profileRoutes from './routes/profileRoutes.js';
 import participationRoutes from './routes/participationRoutes.js';
 import statusRoutes from './routes/statusRoutes.js';
 import requestRoutes from './routes/requestRoutes.js';
+import partnerRoutes from './routes/partnerRoutes.js';
 
 const app = express();
 
@@ -79,6 +80,9 @@ app.use('/api/status', statusRoutes);
 
 // /api/requests/*
 app.use('/api/requests', requestRoutes);
+
+// /api/partners/*
+app.use('/api/partners', partnerRoutes);
 
 
 // Catch-all for SPA (must be last)

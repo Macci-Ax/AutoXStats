@@ -23,6 +23,7 @@ import { MOCK_DRIVERS } from './constants';
 
 import { EventResults } from './pages/EventResults';
 import { Calendar } from './pages/Calendar';
+import { Partners } from './pages/Partners';
 
 const App: React.FC = () => {
   const [page, setPage] = useState('home');
@@ -71,6 +72,7 @@ const App: React.FC = () => {
       case 'events': return <Events onSelectEvent={handleSelectEvent} />;
       case 'event-results': return selectedEventId ? <EventResults eventId={selectedEventId} onBack={() => setPage('events')} /> : <Events onSelectEvent={handleSelectEvent} />;
       case 'gallery': return <Gallery user={user} />;
+      case 'partners': return <Partners />;
       case 'admin':
         // Auth Protection for Admin
         if (!user || user.role !== 'ADMIN') return <Login onNavigate={navigate} />;
