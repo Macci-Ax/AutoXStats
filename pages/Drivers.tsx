@@ -328,23 +328,25 @@ export const Drivers: React.FC<DriversProps> = ({ preSelectedDriverId, preSelect
           })()}
 
           {/* Chart */}
-          <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700/50 h-64 mb-8">
-            <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">Leistungsdaten (Aktuelle Saison)</h3>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 30 }}>
-                <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '4px', color: '#fff' }}
-                  cursor={{ fill: '#334155', opacity: 0.4 }}
-                />
-                <Bar dataKey="Anzahl" radius={[4, 4, 0, 0]} barSize={40}>
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700/50 h-64 mb-8 flex flex-col">
+            <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase shrink-0">Leistungsdaten (Aktuelle Saison)</h3>
+            <div className="flex-1 min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+                  <XAxis dataKey="name" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '4px', color: '#fff' }}
+                    cursor={{ fill: '#334155', opacity: 0.4 }}
+                  />
+                  <Bar dataKey="Anzahl" radius={[4, 4, 0, 0]} barSize={40}>
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
           {/* Recent Races Section */}

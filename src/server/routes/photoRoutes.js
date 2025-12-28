@@ -92,8 +92,8 @@ router.post('/photos', upload.array('photos'), (req, res) => {
     const db = getDb();
 
     const stmt = db.prepare(`
-        INSERT INTO photos (id, physical_event_id, storage_path, photographer, created_at)
-        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        INSERT INTO photos (id, event_id, physical_event_id, storage_path, photographer, created_at)
+        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `);
 
     const errors = [];
@@ -102,7 +102,7 @@ router.post('/photos', upload.array('photos'), (req, res) => {
         const photoId = 'p_' + Date.now() + '_' + Math.round(Math.random() * 1000);
 
         try {
-            stmt.run(photoId, eventId || 'e_general', fileUrl, finalPhotographer);
+            stmt.run(photoId, eventId || 'e_general', eventId || 'e_general', fileUrl, finalPhotographer);
             uploadedPhotos.push({
                 id: photoId,
                 url: fileUrl,
