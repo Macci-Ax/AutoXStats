@@ -16,7 +16,7 @@ router.get('/years', (req, res) => {
     `;
     try {
         const rows = db.prepare(query).all();
-        res.json(rows.map(r => r.year));
+        res.json(rows.map(r => Number(r.year)));
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }

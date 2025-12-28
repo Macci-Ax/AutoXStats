@@ -40,9 +40,10 @@ export const Drivers: React.FC<DriversProps> = ({ preSelectedDriverId, preSelect
       .then(res => res.json())
       .then(years => {
         if (Array.isArray(years) && years.length > 0) {
-          setAvailableYears(years);
+          const numericYears = years.map((y: any) => Number(y));
+          setAvailableYears(numericYears);
           // Default to most recent year
-          setSelectedYear(years[0]);
+          setSelectedYear(numericYears[0]);
         }
       })
       .catch(err => console.error("Failed to fetch years:", err));
