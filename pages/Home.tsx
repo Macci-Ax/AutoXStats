@@ -19,9 +19,10 @@ interface Event {
 
 interface HomeProps {
   onNavigate: (page: string) => void;
+  onSelectDriver: (driverId: string) => void;
 }
 
-const LeaderboardContent: React.FC<{ data: any, onNavigate: (page: string) => void }> = ({ data, onNavigate }) => {
+const LeaderboardContent: React.FC<{ data: any, onNavigate: (page: string) => void, onSelectDriver: (id: string) => void }> = ({ data, onNavigate, onSelectDriver }) => {
   if (!data) return <div className="text-slate-400 text-center py-8 animate-pulse">Lade Meisterschaftsdaten...</div>;
 
   return (
@@ -34,7 +35,11 @@ const LeaderboardContent: React.FC<{ data: any, onNavigate: (page: string) => vo
       </div>
       <div className="grid grid-cols-1 gap-3">
         {data.drivers.map((entry: any, index: number) => (
-          <div key={entry.id || index} className={`bg-slate-900/50 p-4 rounded-lg flex items-center gap-4 border ${index === 0 ? 'border-yellow-500/30 bg-yellow-900/10' : 'border-slate-700/50'} hover:border-red-500/50 transition cursor-pointer group`} onClick={() => onNavigate('drivers')}>
+          <div key={entry.id || index} className={`bg-slate-900/50 p-4 rounded-lg flex items-center gap-4 border ${index === 0 ? 'border-yellow-500/30 bg-yellow-900/10' : 'border-slate-700/50'} hover:border-red-500/50 transition cursor-pointer group`}
+            onClick={() => {
+              if (entry.id) onSelectDriver(entry.id);
+              else onNavigate('drivers');
+            }}>
             {/* Rank */}
             <div className="text-2xl font-black w-8 text-center shrink-0" style={{ color: index === 0 ? '#fbbf24' : index === 1 ? '#94a3b8' : '#b45309' }}>
               {index + 1}
@@ -73,7 +78,7 @@ const LeaderboardContent: React.FC<{ data: any, onNavigate: (page: string) => vo
   );
 };
 
-export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
+export const Home: React.FC<HomeProps> = ({ onNavigate, onSelectDriver }) => {
   const [randomClassData, setRandomClassData] = useState<{ className: string, championship?: string, drivers: any[] } | null>(null);
   const [drcvClassData, setDrcvClassData] = useState<{ className: string, championship?: string, drivers: any[] } | null>(null);
   const [videos, setVideos] = useState<any[]>([]);
@@ -188,7 +193,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                 <Trophy className="text-yellow-500" /> Meisterschaftsführende (WACV)
               </h2>
             </div>
-            <LeaderboardContent data={randomClassData} onNavigate={onNavigate} />
+            <LeaderboardContent data={randomClassData} onNavigate={onNavigate} onSelectDriver={onSelectDriver} />
           </div>
 
           {/* Leaderboard Section (DRCV) */}
@@ -198,7 +203,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
                 <Trophy className="text-yellow-500" /> Meisterschaftsführende (DRCV)
               </h2>
             </div>
-            <LeaderboardContent data={drcvClassData} onNavigate={onNavigate} />
+            <LeaderboardContent data={drcvClassData} onNavigate={onNavigate} onSelectDriver={onSelectDriver} />
           </div>
 
           <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-lg">

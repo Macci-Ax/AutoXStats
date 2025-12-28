@@ -27,6 +27,7 @@ import { Calendar } from './pages/Calendar';
 const App: React.FC = () => {
   const [page, setPage] = useState('home');
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   // Real Auth Context
   const { user, loading } = useAuth();
   const [contextString, setContextString] = useState('');
@@ -58,10 +59,15 @@ const App: React.FC = () => {
     setPage('event-results');
   };
 
+  const handleSelectDriver = (driverId: string) => {
+    setSelectedDriverId(driverId);
+    setPage('drivers');
+  }
+
   const renderPage = () => {
     switch (page) {
-      case 'home': return <Home onNavigate={navigate} />;
-      case 'drivers': return <Drivers />;
+      case 'home': return <Home onNavigate={navigate} onSelectDriver={handleSelectDriver} />;
+      case 'drivers': return <Drivers preSelectedDriverId={selectedDriverId} />;
       case 'events': return <Events onSelectEvent={handleSelectEvent} />;
       case 'event-results': return selectedEventId ? <EventResults eventId={selectedEventId} onBack={() => setPage('events')} /> : <Events onSelectEvent={handleSelectEvent} />;
       case 'gallery': return <Gallery user={user} />;

@@ -14,7 +14,12 @@ interface RaceResult {
 }
 
 
-export const Drivers: React.FC = () => {
+interface DriversProps {
+  preSelectedDriverId?: string | null;
+  preSelectedChampionship?: string | null;
+}
+
+export const Drivers: React.FC<DriversProps> = ({ preSelectedDriverId, preSelectedChampionship }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeChampionship, setActiveChampionship] = useState<Championship | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<LeaderboardEntry | null>(null);
@@ -66,6 +71,24 @@ export const Drivers: React.FC = () => {
       .then(data => setEntries(data))
       .catch(err => console.error("Failed to fetch drivers:", err));
   }, [selectedYear]);
+
+  // Handle pre-selection
+  useEffect(() => {
+    if (preSelectedDriverId && entries.length > 0) {
+      const found = entries.find(e => e.driver.id === preSelectedDriverId || e.driver.originalId === preSelectedDriverId);
+      if (found) {
+        setSelectedEntry(found);
+        // Also expand their class if possible, but optional
+        if (found.driverClass) {
+          setExpandedClasses(prev => ({ ...prev, [found.driverClass!]: true }));
+        }
+        // Automatically select their championship to bypass the selection screen
+        if (found.championships && found.championships.length > 0) {
+          setActiveChampionship(found.championships[0]);
+        }
+      }
+    }
+  }, [preSelectedDriverId, entries]);
 
   // State for Driver Photos
   const [driverPhotos, setDriverPhotos] = useState<{ id: string, url: string }[]>([]);
@@ -276,7 +299,7 @@ export const Drivers: React.FC = () => {
           {(() => {
             // ... Class Breakdown Logic ... 
             const allClassParticipations = entries.filter(e =>
-              e.driver.id === entry.driver.id
+              e.driver.id === entry.driver.id && e.stats.points > 0
             ).sort((a, b) => b.stats.points - a.stats.points);
 
             if (allClassParticipations.length > 1) {
