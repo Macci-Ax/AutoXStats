@@ -28,7 +28,7 @@ router.get('/', (req, res) => {
 // POST /api/partners - Add new partner
 // Protected: In a real app, you'd add middleware to check for ADMIN role here
 router.post('/', (req, res) => {
-    const { name, description, links } = req.body;
+    const { name, description, links, type } = req.body;
 
     if (!name) {
         return res.status(400).json({ error: 'Name is required' });
@@ -36,8 +36,8 @@ router.post('/', (req, res) => {
 
     try {
         const id = crypto.randomUUID();
-        const stmt = db.prepare('INSERT INTO partners (id, name, description) VALUES (?, ?, ?)');
-        stmt.run(id, name, description || '');
+        const stmt = db.prepare('INSERT INTO partners (id, name, description, type) VALUES (?, ?, ?, ?)');
+        stmt.run(id, name, description || '', type || 'MEDIA');
 
         if (Array.isArray(links)) {
             const linkStmt = db.prepare('INSERT INTO partner_links (id, partner_id, url, type) VALUES (?, ?, ?, ?)');
@@ -56,11 +56,11 @@ router.post('/', (req, res) => {
 // PUT /api/partners/:id - Update partner
 router.put('/:id', (req, res) => {
     const { id } = req.params;
-    const { name, description, links } = req.body;
+    const { name, description, links, type } = req.body;
 
     try {
-        const updateStmt = db.prepare('UPDATE partners SET name = ?, description = ? WHERE id = ?');
-        const result = updateStmt.run(name, description || '', id);
+        const updateStmt = db.prepare('UPDATE partners SET name = ?, description = ?, type = ? WHERE id = ?');
+        const result = updateStmt.run(name, description || '', type || 'MEDIA', id);
 
         if (result.changes === 0) {
             return res.status(404).json({ error: 'Partner not found' });

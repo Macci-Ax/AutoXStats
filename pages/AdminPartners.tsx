@@ -5,7 +5,7 @@ import { Plus, Trash2, Edit2, Save, X, Link as LinkIcon } from 'lucide-react';
 const AdminPartners: React.FC = () => {
     const [partners, setPartners] = useState<Partner[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [editForm, setEditForm] = useState<Partial<Partner>>({ name: '', description: '', links: [] });
+    const [editForm, setEditForm] = useState<Partial<Partner>>({ name: '', description: '', links: [], type: 'MEDIA' });
 
     useEffect(() => {
         fetchPartners();
@@ -21,7 +21,7 @@ const AdminPartners: React.FC = () => {
 
     const handleCreate = () => {
         setEditingId('new');
-        setEditForm({ name: '', description: '', links: [] });
+        setEditForm({ name: '', description: '', links: [], type: 'MEDIA' });
     };
 
     const handleEdit = (partner: Partner) => {
@@ -102,6 +102,17 @@ const AdminPartners: React.FC = () => {
                             />
                         </div>
                         <div>
+                            <label className="block text-sm text-slate-400 mb-1">Typ</label>
+                            <select
+                                className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white"
+                                value={editForm.type || 'MEDIA'}
+                                onChange={e => setEditForm({ ...editForm, type: e.target.value as any })}
+                            >
+                                <option value="MEDIA">Media & Partner</option>
+                                <option value="VEREIN">Verein</option>
+                            </select>
+                        </div>
+                        <div>
                             <label className="block text-sm text-slate-400 mb-1">Beschreibung</label>
                             <textarea
                                 className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-white"
@@ -170,7 +181,12 @@ const AdminPartners: React.FC = () => {
                 {partners.map(partner => (
                     <div key={partner.id} className="bg-slate-800 p-4 rounded-lg border border-slate-700 flex justify-between items-start">
                         <div>
-                            <h3 className="font-bold text-white text-lg">{partner.name}</h3>
+                            <div className="flex items-center gap-2">
+                                <h3 className="font-bold text-white text-lg">{partner.name}</h3>
+                                <span className={`text-xs px-2 py-0.5 rounded ${partner.type === 'VEREIN' ? 'bg-blue-600' : 'bg-orange-600'}`}>
+                                    {partner.type || 'MEDIA'}
+                                </span>
+                            </div>
                             <p className="text-slate-400 text-sm mt-1">{partner.description}</p>
                             <div className="flex gap-2 mt-3 flex-wrap">
                                 {partner.links.map((link, idx) => (

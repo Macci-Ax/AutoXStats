@@ -134,4 +134,5 @@ export interface Partner {
   name: string;
   description?: string;
   links: PartnerLink[];
+  type: 'MEDIA' | 'VEREIN';
 }

@@ -25,7 +25,8 @@ export const getDb = () => {
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             description TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            type TEXT DEFAULT 'MEDIA'
         )`).run();
 
         // Ensure partner_links table exists
