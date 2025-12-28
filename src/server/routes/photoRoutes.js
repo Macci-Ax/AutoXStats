@@ -1,4 +1,6 @@
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
 import { getDb } from '../config/db.js';
 import { upload } from '../middleware/upload.js';
 import { requireAdmin } from '../middleware/admin.js';
@@ -181,6 +183,75 @@ router.get('/drivers/:id/photos', (req, res) => {
         }));
         res.json(photos);
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE /photos/:id (Delete single photo)
+router.delete('/photos/:id', requireAdmin, (req, res) => {
+    const photoId = req.params.id;
+    const db = getDb();
+
+    try {
+        // 1. Get file path
+        const photo = db.prepare("SELECT storage_path FROM photos WHERE id = ?").get(photoId);
+        if (!photo) return res.status(404).json({ error: "Photo not found" });
+
+        // 2. Delete tags
+        db.prepare("DELETE FROM photo_tags WHERE photo_id = ?").run(photoId);
+
+        // 3. Delete from DB
+        db.prepare("DELETE FROM photos WHERE id = ?").run(photoId);
+
+        // 4. Delete file
+        // photo.storage_path is like "/uploads/filename.jpg"
+        // We need to resolve it relative to the root
+        const filePath = path.join(process.cwd(), photo.storage_path);
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+
+        res.json({ message: "Photo deleted" });
+    } catch (err) {
+        console.error("Delete photo error:", err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// DELETE /gallery/:eventId (Delete all photos in event)
+router.delete('/gallery/:eventId', requireAdmin, (req, res) => {
+    const { eventId } = req.params;
+    const db = getDb();
+
+    try {
+        // 1. Get all photos
+        const photos = db.prepare("SELECT id, storage_path FROM photos WHERE physical_event_id = ?").all(eventId);
+
+        if (photos.length === 0) {
+            return res.json({ message: "No photos to delete" });
+        }
+
+        // 2. Delete files and DB records
+        const deleteTags = db.prepare("DELETE FROM photo_tags WHERE photo_id = ?");
+        const deletePhoto = db.prepare("DELETE FROM photos WHERE id = ?");
+
+        let deletedCount = 0;
+        photos.forEach(p => {
+            // DB
+            deleteTags.run(p.id);
+            deletePhoto.run(p.id);
+
+            // File
+            const filePath = path.join(process.cwd(), p.storage_path);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+            deletedCount++;
+        });
+
+        res.json({ message: `Deleted gallery with ${deletedCount} photos` });
+    } catch (err) {
+        console.error("Delete gallery error:", err);
         res.status(500).json({ error: err.message });
     }
 });

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Download, Tag, Loader2, Image as ImageIcon, Filter, ArrowLeft } from 'lucide-react';
+import { Upload, Download, Tag, Loader2, Image as ImageIcon, Filter, ArrowLeft, Trash2 } from 'lucide-react';
 import { Photo, User, Event } from '../types';
 import { analyzeImage } from '../services/geminiService';
 
@@ -237,167 +237,212 @@ export const Gallery: React.FC<GalleryProps> = ({ user }) => {
         )}
       </div>
 
+      {view === 'detail' && user?.role === 'ADMIN' && (
+        <button
+          onClick={() => {
+            if (confirm("ACHTUNG: Willst du wirklich ALLE Fotos dieses Events löschen? Dies kann nicht rückgängig gemacht werden.")) {
+              fetch(`/api/gallery/${selectedEventId}`, { method: 'DELETE', credentials: 'include' })
+                .then(r => r.json())
+                .then(() => {
+                  alert("Galerie gelöscht!");
+                  handleBackToOverview();
+                });
+            }
+          }}
+          className="mt-2 text-red-500 hover:text-red-400 text-sm underline"
+        >
+          Ganze Galerie löschen
+        </button>
+      )}
+
+
       {/* OVERVIEW VIEW */}
-      {view === 'overview' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {galleryEvents.length === 0 ? (
-            <div className="col-span-full text-center py-12 text-slate-500">
-              <ImageIcon size={48} className="mx-auto mb-4 opacity-50" />
-              <p>Noch keine Galerien vorhanden.</p>
-            </div>
-          ) : (
-            galleryEvents.map(event => (
-              <div
-                key={event.id}
-                onClick={() => handleEventClick(event.id)}
-                className="group bg-slate-800 rounded-lg overflow-hidden border border-slate-700 hover:border-red-500/50 cursor-pointer transition-all hover:shadow-lg hover:shadow-red-900/10"
-              >
-                <div className="aspect-video bg-slate-900 relative overflow-hidden">
-                  {event.cover_url ? (
-                    <img src={event.cover_url} alt={event.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-600">
-                      <ImageIcon size={48} />
+      {
+        view === 'overview' && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {galleryEvents.length === 0 ? (
+              <div className="col-span-full text-center py-12 text-slate-500">
+                <ImageIcon size={48} className="mx-auto mb-4 opacity-50" />
+                <p>Noch keine Galerien vorhanden.</p>
+              </div>
+            ) : (
+              galleryEvents.map(event => (
+                <div
+                  key={event.id}
+                  onClick={() => handleEventClick(event.id)}
+                  className="group bg-slate-800 rounded-lg overflow-hidden border border-slate-700 hover:border-red-500/50 cursor-pointer transition-all hover:shadow-lg hover:shadow-red-900/10"
+                >
+                  <div className="aspect-video bg-slate-900 relative overflow-hidden">
+                    {event.cover_url ? (
+                      <img src={event.cover_url} alt={event.name} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-600">
+                        <ImageIcon size={48} />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition" />
+                    <div className="absolute bottom-3 right-3 bg-black/60 px-2 py-1 rounded text-xs text-white font-mono flex items-center gap-1">
+                      <ImageIcon size={12} /> {event.photo_count}
                     </div>
-                  )}
-                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition" />
-                  <div className="absolute bottom-3 right-3 bg-black/60 px-2 py-1 rounded text-xs text-white font-mono flex items-center gap-1">
-                    <ImageIcon size={12} /> {event.photo_count}
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-lg font-bold text-white group-hover:text-red-400 transition">{event.name}</h3>
+                    <p className="text-slate-400 text-sm mt-1">{new Date(event.date).toLocaleDateString()}</p>
                   </div>
                 </div>
-                <div className="p-4">
-                  <h3 className="text-lg font-bold text-white group-hover:text-red-400 transition">{event.name}</h3>
-                  <p className="text-slate-400 text-sm mt-1">{new Date(event.date).toLocaleDateString()}</p>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
+              ))
+            )}
+          </div>
+        )
+      }
 
       {/* DETAIL VIEW */}
-      {view === 'detail' && (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-fade-in">
-            {photos.map(photo => (
-              <div key={photo.id} className="group bg-slate-800 rounded-lg overflow-hidden border border-slate-700 hover:border-slate-500 transition relative">
-                <div className="aspect-[4/3] overflow-hidden bg-slate-900 relative">
-                  <img src={photo.url} alt="Autocross" className="w-full h-full object-cover transition duration-500 group-hover:scale-105" />
+      {
+        view === 'detail' && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-fade-in">
+              {photos.map(photo => (
+                <div key={photo.id} className="group bg-slate-800 rounded-lg overflow-hidden border border-slate-700 hover:border-slate-500 transition relative">
+                  <div className="aspect-[4/3] overflow-hidden bg-slate-900 relative">
+                    <img src={photo.url} alt="Autocross" className="w-full h-full object-cover transition duration-500 group-hover:scale-105" />
 
-                  {/* Tags Overlay */}
-                  <div className="absolute top-2 left-2 flex flex-wrap gap-1 z-20">
-                    {photo.tags && photo.tags.map(tag => (
-                      <div key={tag.id} className="bg-black/60 backdrop-blur text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 border border-white/10">
-                        <span>@{tag.name}</span>
-                        {user?.role === 'ADMIN' && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (confirm('Tag löschen?')) {
-                                fetch(`/api/photos/${photo.id}/tags/${tag.id}`, { method: 'DELETE', credentials: 'include' })
-                                  .then(res => {
-                                    if (res.ok) loadPhotos(selectedEventId);
-                                    else alert("Fehler beim Löschen des Tags");
-                                  });
-                              }
-                            }}
-                            className="text-red-400 hover:text-red-200 ml-1 font-bold"
-                          >×</button>
-                        )}
+                    {/* Tags Overlay */}
+                    <div className="absolute top-2 left-2 flex flex-wrap gap-1 z-20">
+                      {photo.tags && photo.tags.map(tag => (
+                        <div key={tag.id} className="bg-black/60 backdrop-blur text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 border border-white/10">
+                          <span>@{tag.name}</span>
+                          {user?.role === 'ADMIN' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm('Tag löschen?')) {
+                                  fetch(`/api/photos/${photo.id}/tags/${tag.id}`, { method: 'DELETE', credentials: 'include' })
+                                    .then(res => {
+                                      if (res.ok) loadPhotos(selectedEventId);
+                                      else alert("Fehler beim Löschen des Tags");
+                                    });
+                                }
+                              }}
+                              className="text-red-400 hover:text-red-200 ml-1 font-bold"
+                            >×</button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Admin Tag Button */}
+                    {user?.role === 'ADMIN' && (
+                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition z-20">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.stopPropagation();
+                            setTaggingPhotoId(photo.id);
+                          }}
+                          className="bg-red-600 text-white p-1.5 rounded shadow hover:bg-red-700"
+                          title="Fahrer markieren"
+                        >
+                          <Tag size={16} />
+                        </button>
                       </div>
-                    ))}
+                    )}
                   </div>
 
-                  {/* Admin Tag Button */}
-                  {user?.role === 'ADMIN' && (
-                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition z-20">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition flex flex-col justify-end p-4">
+                    <div className="flex justify-between items-end">
+                      <div className="text-white text-sm">
+                        <p className="font-bold">{photo.photographer}</p>
+                        <p className="text-xs opacity-75">{new Date(photo.uploadDate).toLocaleDateString()}</p>
+                      </div>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.stopPropagation();
-                          setTaggingPhotoId(photo.id);
-                        }}
-                        className="bg-red-600 text-white p-1.5 rounded shadow hover:bg-red-700"
-                        title="Fahrer markieren"
+                        onClick={(e) => { e.stopPropagation(); downloadImage(photo); }}
+                        className="bg-white/10 hover:bg-white/20 backdrop-blur text-white p-2 rounded-full border border-white/20"
+                        title={user?.isPremium ? "Download High-Res" : "Download Low-Res (Login für High-Res)"}
                       >
-                        <Tag size={16} />
+                        <Download size={20} />
                       </button>
+                      {user?.role === 'ADMIN' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm("Foto wirklich löschen?")) {
+                              fetch(`/api/photos/${photo.id}`, { method: 'DELETE', credentials: 'include' })
+                                .then(res => {
+                                  if (res.ok) loadPhotos(selectedEventId);
+                                  else alert("Fehler beim Löschen");
+                                });
+                            }
+                          }}
+                          className="bg-red-600/80 hover:bg-red-600 backdrop-blur text-white p-2 rounded-full border border-red-500/20 ml-2"
+                          title="Löschen"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </div>
 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition flex flex-col justify-end p-4">
-                  <div className="flex justify-between items-end">
-                    <div className="text-white text-sm">
-                      <p className="font-bold">{photo.photographer}</p>
-                      <p className="text-xs opacity-75">{new Date(photo.uploadDate).toLocaleDateString()}</p>
+                  {/* Mobile Footer */}
+                  <div className="p-3 md:hidden">
+                    <div className="flex justify-between items-center text-sm text-slate-300">
+                      <span>{photo.photographer}</span>
+                      <Download size={16} onClick={() => downloadImage(photo)} />
                     </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); downloadImage(photo); }}
-                      className="bg-white/10 hover:bg-white/20 backdrop-blur text-white p-2 rounded-full border border-white/20"
-                      title={user?.isPremium ? "Download High-Res" : "Download Low-Res (Login für High-Res)"}
-                    >
-                      <Download size={20} />
-                    </button>
                   </div>
                 </div>
-
-                {/* Mobile Footer */}
-                <div className="p-3 md:hidden">
-                  <div className="flex justify-between items-center text-sm text-slate-300">
-                    <span>{photo.photographer}</span>
-                    <Download size={16} onClick={() => downloadImage(photo)} />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          {photos.length === 0 && (
-            <div className="text-center py-12 text-slate-500">
-              <p>Keine Fotos für dieses Event gefunden.</p>
+              ))}
             </div>
-          )}
-        </>
-      )}
+            {photos.length === 0 && (
+              <div className="text-center py-12 text-slate-500">
+                <p>Keine Fotos für dieses Event gefunden.</p>
+              </div>
+            )}
+          </>
+        )
+      }
 
       {/* Empty State / Call to Action if not logged in */}
-      {!user && view === 'overview' && galleryEvents.length === 0 && (
-        <div className="text-center p-8 bg-slate-800/50 rounded-lg border border-slate-700 border-dashed">
-          <ImageIcon className="mx-auto text-slate-500 mb-2" size={32} />
-          <p className="text-slate-400">Melde dich an, um erste Fotos hochzuladen.</p>
-        </div>
-      )}
-      {/* TAGGING MODAL */}
-      {taggingPhotoId && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setTaggingPhotoId(null)}>
-          <div className="bg-slate-800 rounded-lg w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
-            <h3 className="text-xl font-bold text-white mb-4">Fahrer markieren</h3>
-            <input
-              type="text"
-              placeholder="Fahrer suchen..."
-              className="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 mb-4 focus:border-red-500 outline-none"
-              value={tagSearch}
-              onChange={e => setTagSearch(e.target.value)}
-              autoFocus
-            />
-            <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-1">
-              {filteredDrivers.map(driver => (
-                <button
-                  key={driver.id}
-                  onClick={() => handleAddTag(driver.id)}
-                  className="w-full text-left p-2 hover:bg-slate-700 rounded text-slate-200"
-                >
-                  {driver.name} {driver.start_number ? `(#${driver.start_number})` : ''}
-                </button>
-              ))}
-              {filteredDrivers.length === 0 && <p className="text-slate-500 text-center py-2">Keine Fahrer gefunden.</p>}
-            </div>
-            <button onClick={() => setTaggingPhotoId(null)} className="mt-4 w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded">
-              Abbrechen
-            </button>
+      {
+        !user && view === 'overview' && galleryEvents.length === 0 && (
+          <div className="text-center p-8 bg-slate-800/50 rounded-lg border border-slate-700 border-dashed">
+            <ImageIcon className="mx-auto text-slate-500 mb-2" size={32} />
+            <p className="text-slate-400">Melde dich an, um erste Fotos hochzuladen.</p>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+      {/* TAGGING MODAL */}
+      {
+        taggingPhotoId && (
+          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setTaggingPhotoId(null)}>
+            <div className="bg-slate-800 rounded-lg w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+              <h3 className="text-xl font-bold text-white mb-4">Fahrer markieren</h3>
+              <input
+                type="text"
+                placeholder="Fahrer suchen..."
+                className="w-full bg-slate-900 border border-slate-700 text-white rounded p-2 mb-4 focus:border-red-500 outline-none"
+                value={tagSearch}
+                onChange={e => setTagSearch(e.target.value)}
+                autoFocus
+              />
+              <div className="max-h-60 overflow-y-auto custom-scrollbar space-y-1">
+                {filteredDrivers.map(driver => (
+                  <button
+                    key={driver.id}
+                    onClick={() => handleAddTag(driver.id)}
+                    className="w-full text-left p-2 hover:bg-slate-700 rounded text-slate-200"
+                  >
+                    {driver.name} {driver.start_number ? `(#${driver.start_number})` : ''}
+                  </button>
+                ))}
+                {filteredDrivers.length === 0 && <p className="text-slate-500 text-center py-2">Keine Fahrer gefunden.</p>}
+              </div>
+              <button onClick={() => setTaggingPhotoId(null)} className="mt-4 w-full py-2 bg-slate-700 hover:bg-slate-600 text-white rounded">
+                Abbrechen
+              </button>
+            </div>
+          </div>
+        )
+      }
+    </div >
   );
 };
