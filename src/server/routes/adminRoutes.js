@@ -26,6 +26,7 @@ router.get('/driver-results', (req, res) => {
         SELECT 
             rr.id,
             rr.class_id,
+            rr.event_id,
             e.title as event_name,
             e.start_date as event_date,
             c.name as class_name,
@@ -34,6 +35,7 @@ router.get('/driver-results', (req, res) => {
             rr.rank,
             rr.points,
             rr.championship_points,
+            rr.license_type,
             d.name as driver_name
         FROM race_results rr
         JOIN physical_events e ON rr.event_id = e.id
@@ -238,6 +240,98 @@ router.get('/championships', (req, res) => {
         const rows = db.prepare('SELECT * FROM championships ORDER BY name').all();
         res.json(rows);
     } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+// Helper: Calculate championship points based on adjusted rank
+function getChampPointsForRank(adjustedRank, isLangstrecke) {
+    if (isLangstrecke) {
+        const langPoints = { 1: 40, 2: 35, 3: 30, 4: 27, 5: 25, 6: 23, 7: 21, 8: 19, 9: 17 };
+        if (langPoints[adjustedRank]) return langPoints[adjustedRank];
+        if (adjustedRank >= 10 && adjustedRank <= 25) return 26 - adjustedRank;
+        return 0;
+    } else {
+        const pointsMap = { 1: 9, 2: 7, 3: 6, 4: 5, 5: 4, 6: 3, 7: 2, 8: 1 };
+        return pointsMap[adjustedRank] || 0;
+    }
+}
+
+// POST /recalculate-points (Recalculate points for an event/class)
+router.post('/recalculate-points', requireAdmin, (req, res) => {
+    const { event_id, class_id } = req.body;
+    const db = getDb();
+
+    if (!event_id || !class_id) {
+        return res.status(400).json({ error: "Missing event_id or class_id" });
+    }
+
+    try {
+        // 1. Fetch all results for this event/class
+        const rows = db.prepare(`
+            SELECT id, rank, license_type, class_id
+            FROM race_results
+            WHERE event_id = ? AND class_id = ?
+            ORDER BY rank ASC
+        `).all(event_id, class_id);
+
+        if (rows.length === 0) {
+            return res.json({ message: "No results to recalculate" });
+        }
+
+        const isLangstrecke = rows[0].class_id.includes('_lang') || rows[0].class_id.includes('langstrecke'); // lenient check
+
+        // 2. Identify distinct groups (non-DQ/TL vs DQ/TL)
+        // Only DRCV (or NULL/Empty treated as DRCV) get points
+        const validDrivers = rows.filter(r => {
+            const type = (r.license_type || 'DRCV').trim();
+            return type !== 'TL' && type !== 'DQ';
+        });
+
+        // 3. Prepare updates
+        const updates = [];
+
+        // Assign points to valid drivers based on their relative order
+        validDrivers.forEach((r, index) => {
+            const adjustedRank = index + 1;
+            const points = getChampPointsForRank(adjustedRank, isLangstrecke);
+            updates.push({ id: r.id, points, champPoints: points });
+        });
+
+        // Assign 0 to invalid drivers
+        rows.filter(r => {
+            const type = (r.license_type || 'DRCV').trim();
+            return type === 'TL' || type === 'DQ';
+        }).forEach(r => {
+            updates.push({ id: r.id, points: 0, champPoints: 0 }); // Usually 0 points for DQ? Or keep event points? Let's say 0 champ points.
+        });
+
+        // 4. Batch Update
+        const updateStmt = db.prepare(`
+            UPDATE race_results 
+            SET championship_points = ? 
+            WHERE id = ?
+        `);
+
+        const transaction = db.transaction((items) => {
+            let changed = 0;
+            for (const item of items) {
+                updateStmt.run(item.champPoints, item.id);
+                // Note: We are currently NOT updating the 'points' (event points) column, only 'championship_points'.
+                // If DQ should have 0 event points too, we should update that. 
+                // For now, let's assume this is mostly for Championship calculation.
+                // But usually DQ means 0 everywhere. Let's update championship_points only for safety first unless user asked otherwise.
+                changed++;
+            }
+            return changed;
+        });
+
+        transaction(updates);
+
+        res.json({ message: "Points recalculation complete", updated: updates.length });
+
+    } catch (err) {
+        console.error("Recalculation error:", err);
         return res.status(500).json({ error: err.message });
     }
 });

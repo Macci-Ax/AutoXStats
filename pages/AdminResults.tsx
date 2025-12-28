@@ -24,6 +24,7 @@ const AdminResults: React.FC = () => {
     // Results
     const [results, setResults] = useState<any[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
+    const [recalcLoading, setRecalcLoading] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editValues, setEditValues] = useState<any>({});
 
@@ -106,7 +107,8 @@ const AdminResults: React.FC = () => {
             points: result.points,
             championship_points: result.championship_points,
             car: result.car || '',
-            start_number: result.start_number || ''
+            start_number: result.start_number || '',
+            license_type: result.license_type || 'DRCV'
         });
     };
 
@@ -140,6 +142,74 @@ const AdminResults: React.FC = () => {
             : value;
 
         setEditValues((prev: any) => ({ ...prev, [field]: val }));
+    };
+
+    const handleRecalculate = async () => {
+        if (viewMode === 'event') {
+            if (!selectedEventId || !selectedClassId) return;
+            if (!confirm("Punkte für dieses Event und Klasse basierend auf Platzierung und Status (DQ/TL) neu berechnen? Manuelle Änderungen an Punkten werden überschrieben.")) return;
+
+            setRecalcLoading(true);
+            try {
+                const res = await fetch(`${API_BASE}/admin/recalculate-points`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ event_id: selectedEventId, class_id: selectedClassId })
+                });
+                const data = await res.json();
+                alert(data.message || "Neuberechnung abgeschlossen.");
+
+                // Refresh
+                setLoading(true);
+                const refreshRes = await fetch(`${API_BASE}/race-results?event_id=${selectedEventId}&class_id=${selectedClassId}`);
+                const refreshData = await refreshRes.json();
+                setResults(refreshData);
+                setLoading(false);
+            } catch (err) {
+                alert("Fehler: " + err);
+            } finally {
+                setRecalcLoading(false);
+            }
+        } else {
+            // Driver Mode Recalculation (Batch)
+            if (!results.length) return;
+            // Identify unique event+class combinations in the current list
+            const uniqueCombos = new Set<string>();
+            results.forEach(r => {
+                if (r.event_id && r.class_id) {
+                    uniqueCombos.add(`${r.event_id}::${r.class_id}`);
+                }
+            });
+
+            if (uniqueCombos.size === 0) return;
+            if (!confirm(`Punkte für ${uniqueCombos.size} betroffene Events neu berechnen? Dies kann einen Moment dauern.`)) return;
+
+            setRecalcLoading(true);
+            try {
+                for (const combo of Array.from(uniqueCombos)) {
+                    const [eid, cid] = combo.split('::');
+                    await fetch(`${API_BASE}/admin/recalculate-points`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ event_id: eid, class_id: cid })
+                    });
+                }
+                alert("Alle betroffenen Events wurden neu berechnet.");
+
+                // Refresh Current Driver View
+                if (selectedDriverId) {
+                    setLoading(true);
+                    const res = await fetch(`${API_BASE}/admin/driver-results?driver_id=${selectedDriverId}`);
+                    const data = await res.json();
+                    if (Array.isArray(data)) setResults(data);
+                    setLoading(false);
+                }
+            } catch (err) {
+                alert("Fehler bei der Batch-Verarbeitung: " + err);
+            } finally {
+                setRecalcLoading(false);
+            }
+        }
     };
 
     // Filter drivers for dropdown
@@ -178,19 +248,33 @@ const AdminResults: React.FC = () => {
             <h1 className="text-3xl font-bold mb-6 text-neon-blue">Ergebnis Editor</h1>
 
             {/* View Mode Toggle */}
-            <div className="flex space-x-4 mb-6">
-                <button
-                    onClick={() => setViewMode('event')}
-                    className={`px-4 py-2 rounded ${viewMode === 'event' ? 'bg-red-600' : 'bg-gray-700 hover:bg-gray-600'}`}
-                >
-                    Nach Event
-                </button>
-                <button
-                    onClick={() => setViewMode('driver')}
-                    className={`px-4 py-2 rounded ${viewMode === 'driver' ? 'bg-red-600' : 'bg-gray-700 hover:bg-gray-600'}`}
-                >
-                    Nach Fahrer
-                </button>
+            {/* View Mode Toggle and Actions */}
+            <div className="flex justify-between items-center mb-6">
+                <div className="flex space-x-4">
+                    <button
+                        onClick={() => setViewMode('event')}
+                        className={`px-4 py-2 rounded ${viewMode === 'event' ? 'bg-red-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+                    >
+                        Nach Event
+                    </button>
+                    <button
+                        onClick={() => setViewMode('driver')}
+                        className={`px-4 py-2 rounded ${viewMode === 'driver' ? 'bg-red-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+                    >
+                        Nach Fahrer
+                    </button>
+                </div>
+
+                {/* Global Recalc Button */}
+                {((viewMode === 'event' && selectedEventId && selectedClassId) || (viewMode === 'driver' && displayedResults.length > 0)) && (
+                    <button
+                        onClick={handleRecalculate}
+                        disabled={recalcLoading}
+                        className="bg-yellow-600 hover:bg-yellow-500 text-white px-4 py-2 rounded flex items-center gap-2"
+                    >
+                        {recalcLoading ? "Berechne..." : (viewMode === 'driver' ? "Alle Events neuberechnen" : "Punkte neu berechnen")}
+                    </button>
+                )}
             </div>
 
             {/* Selectors */}
@@ -266,6 +350,8 @@ const AdminResults: React.FC = () => {
                                 {driverYears.map(y => <option key={y} value={y}>{y}</option>)}
                             </select>
                         </div>
+
+
                         <div>
                             <label className="block text-gray-400 mb-1">Filter: Klasse</label>
                             <select
@@ -297,6 +383,7 @@ const AdminResults: React.FC = () => {
                                         <th className="p-3 text-left">Klasse</th>
                                     </>
                                 )}
+                                <th className="p-3 text-left">Typ</th>
                                 <th className="p-3 text-left">StartNr</th>
                                 <th className="p-3 text-left">Fahrzeug</th>
                                 <th className="p-3 text-left">Pkt (Event)</th>
@@ -331,6 +418,28 @@ const AdminResults: React.FC = () => {
                                             <td className="p-3 text-sm text-gray-300">{r.class_name}</td>
                                         </>
                                     )}
+
+                                    {/* Type (License) */}
+                                    <td className="p-3">
+                                        {editingId === r.id ? (
+                                            <select
+                                                value={editValues.license_type}
+                                                onChange={e => handleInputChange('license_type', e.target.value)}
+                                                className="bg-gray-900 border border-gray-600 rounded p-1 text-white text-sm"
+                                            >
+                                                <option value="DRCV">Start</option>
+                                                <option value="TL">TL</option>
+                                                <option value="DQ">DQ</option>
+                                            </select>
+                                        ) : (
+                                            <span className={`text-xs px-2 py-1 rounded ${r.license_type === 'DQ' ? 'bg-red-900 text-red-300' :
+                                                r.license_type === 'TL' ? 'bg-blue-900 text-blue-300' :
+                                                    'bg-gray-700 text-gray-300'
+                                                }`}>
+                                                {r.license_type || 'Start'}
+                                            </span>
+                                        )}
+                                    </td>
 
                                     {/* Start Nr */}
                                     <td className="p-3 text-gray-400">
@@ -396,7 +505,7 @@ const AdminResults: React.FC = () => {
                             ))}
                             {displayedResults.length === 0 && (
                                 <tr>
-                                    <td colSpan={viewMode === 'event' ? 7 : 8} className="p-8 text-center text-gray-500">
+                                    <td colSpan={viewMode === 'event' ? 8 : 9} className="p-8 text-center text-gray-500">
                                         {viewMode === 'event' && !selectedClassId ? "Bitte Klasse wählen." :
                                             viewMode === 'driver' && !selectedDriverId ? "Bitte Fahrer wählen." :
                                                 "Keine Ergebnisse gefunden."}

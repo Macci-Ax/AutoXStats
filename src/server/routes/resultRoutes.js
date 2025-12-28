@@ -21,7 +21,8 @@ router.get('/race-results', (req, res) => {
             COALESCE(rr.car, d.car) as car,
             rr.rank, 
             rr.points, 
-            rr.championship_points 
+            rr.championship_points,
+            rr.license_type 
         FROM race_results rr
         JOIN drivers d ON rr.driver_id = d.id
         WHERE rr.event_id = ? AND rr.class_id = ?
@@ -39,7 +40,7 @@ router.get('/race-results', (req, res) => {
 // PUT /results/:id (Update race result)
 router.put('/results/:id', requireAdmin, (req, res) => {
     const resultId = req.params.id;
-    const { rank, points, championship_points, car, start_number } = req.body;
+    const { rank, points, championship_points, car, start_number, license_type } = req.body;
     const db = getDb();
 
     if (rank === undefined || points === undefined || championship_points === undefined) {
@@ -48,12 +49,12 @@ router.put('/results/:id', requireAdmin, (req, res) => {
 
     const query = `
         UPDATE race_results 
-        SET rank = ?, points = ?, championship_points = ?, car = ?, start_number = ?
+        SET rank = ?, points = ?, championship_points = ?, car = ?, start_number = ?, license_type = ?
         WHERE id = ?
     `;
 
     try {
-        const info = db.prepare(query).run(rank, points, championship_points, car, start_number, resultId);
+        const info = db.prepare(query).run(rank, points, championship_points, car, start_number, license_type || 'DRCV', resultId);
 
         if (info.changes === 0) {
             res.status(404).json({ error: "Result not found" });
