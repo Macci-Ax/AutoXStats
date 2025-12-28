@@ -9,7 +9,7 @@ import { ProfileEdit } from './pages/ProfileEdit';
 import { PublicProfile } from './pages/PublicProfile';
 import Admin from './pages/Admin';
 import DriverProfileEditor from './pages/DriverProfileEditor';
-import { ChatAssistant } from './components/ChatAssistant';
+
 import Login from './pages/Login';
 import { Register } from './pages/Register';
 import { VerifyEmail } from './pages/VerifyEmail';
@@ -97,8 +97,7 @@ const App: React.FC = () => {
         </div>
       </footer>
 
-      {/* Floating Chatbot */}
-      <ChatAssistant contextData={contextString} />
+
 
       {/* Modal Removed - uses Login page now */}
     </div>

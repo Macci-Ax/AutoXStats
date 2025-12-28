@@ -105,6 +105,13 @@ export const Drivers: React.FC = () => {
     const matchesSearch = entry.driver.name.toLowerCase().includes(searchTermLower) ||
       teamName.includes(searchTermLower) ||
       (entry.number && entry.number.toString().includes(searchTerm));
+
+    // Filter out drivers with 0 points unless searching (optional, but let's stick to user request of "no 0 point drivers")
+    // Actually, user said "no 0 point drivers in the list".
+    if (entry.stats.points <= 0 && !searchTerm) {
+      return false;
+    }
+
     return matchesSearch;
   });
 

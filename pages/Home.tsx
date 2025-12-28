@@ -81,8 +81,8 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
   const [recentEvents, setRecentEvents] = useState<Event[]>([]);
 
   useEffect(() => {
-    // Fetch random leaderboard (Any)
-    fetch('/api/leaderboard/random-class')
+    // Fetch random WACV leaderboard
+    fetch('/api/leaderboard/random-class?championship=WACV')
       .then(res => res.ok ? res.json() : null)
       .then(data => data?.drivers ? setRandomClassData(data) : setRandomClassData(null))
       .catch(err => console.error("Failed to fetch random leaderboard", err));
@@ -185,7 +185,7 @@ export const Home: React.FC<HomeProps> = ({ onNavigate }) => {
           <div className="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-lg">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold flex items-center gap-2">
-                <Trophy className="text-yellow-500" /> Meisterschaftsführende
+                <Trophy className="text-yellow-500" /> Meisterschaftsführende (WACV)
               </h2>
             </div>
             <LeaderboardContent data={randomClassData} onNavigate={onNavigate} />

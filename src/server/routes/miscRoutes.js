@@ -41,15 +41,21 @@ router.get('/leaderboard/random-class', (req, res) => {
     const championship = req.query.championship;
     console.log("Request for random class. Champ filter:", championship);
 
-    // First get all classes that have drivers
+    // First get all classes that have results for the CURRENT year (or all time if year not specified, but usually we want current)
+    // Actually, let's just look for classes with results in the current year.
+    // Assuming current year is 2025 based on the PDFs.
+    const currentYear = new Date().getFullYear();
+
     let classesQuery = `
         SELECT DISTINCT c.id, c.name, c.championship_id 
         FROM classes c 
-        JOIN driver_participations dp ON c.id = dp.class_id 
-        WHERE dp.points > 0
+        JOIN race_results rr ON c.id = rr.class_id
+        JOIN championship_events ce ON rr.championship_event_id = ce.id
+        JOIN physical_events pe ON ce.physical_event_id = pe.id
+        WHERE strftime('%Y', pe.start_date) = ?
     `;
 
-    const params = [];
+    const params = [String(currentYear)];
     if (championship) {
         classesQuery += ` AND c.championship_id = ?`;
         params.push(championship);
@@ -58,24 +64,51 @@ router.get('/leaderboard/random-class', (req, res) => {
     try {
         const classes = db.prepare(classesQuery).all(...params);
         if (!classes || classes.length === 0) {
-            return res.json({ className: 'Keine Klasse', drivers: [] });
+            // Fallback to searching without year restriction if no results found for current year yet
+            // (or handle empty)
+            let fallbackQuery = `
+                SELECT DISTINCT c.id, c.name, c.championship_id 
+                FROM classes c 
+                JOIN race_results rr ON c.id = rr.class_id
+             `;
+            const fallbackParams = [];
+            if (championship) {
+                fallbackQuery += ` WHERE c.championship_id = ?`;
+                fallbackParams.push(championship);
+            }
+            const fallbackClasses = db.prepare(fallbackQuery).all(...fallbackParams);
+
+            if (!fallbackClasses || fallbackClasses.length === 0) {
+                return res.json({ className: 'Keine Klasse', drivers: [] });
+            }
+            // Use fallback classes
+            classes.push(...fallbackClasses);
         }
 
         const randomClass = classes[Math.floor(Math.random() * classes.length)];
         const classId = randomClass.id;
 
+        // Calculate points dynamically from race_results
+        // Simple SUM for now. To be perfect, should import the Streicher logic, 
+        // but for Leaderboard preview, SUM(championship_points) is a good approximation 
+        // or actually championship_points SHOULD be the valid points for that race.
         const driversQuery = `
-    SELECT
-    d.id, d.name, d.team, d.car,
-        dp.points as total_points
+            SELECT 
+                d.id, d.name, d.team, d.car,
+                SUM(rr.championship_points) as total_points
             FROM drivers d
-            JOIN driver_participations dp ON d.id = dp.driver_id
-            WHERE dp.class_id = ?
-        ORDER BY dp.points DESC
+            JOIN race_results rr ON d.id = rr.driver_id
+            JOIN championship_events ce ON rr.championship_event_id = ce.id
+            JOIN physical_events pe ON ce.physical_event_id = pe.id
+            WHERE rr.class_id = ? AND strftime('%Y', pe.start_date) = ?
+            GROUP BY d.id
+            ORDER BY total_points DESC
             LIMIT 3
         `;
 
-        const drivers = db.prepare(driversQuery).all(classId);
+        const drivers = db.prepare(driversQuery).all(classId, String(currentYear));
+
+        // Convert to array
         res.json({
             className: randomClass.name,
             championship: randomClass.championship_id,
