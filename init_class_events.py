@@ -46,9 +46,9 @@ def init_class_events():
     
     print("Populating class_events from race_results...")
     
-    # Get distinct class_id, event_id, and class_name from race_results joined with classes
+    # Get distinct class_id, event_id, championship_event_id, and class_name from race_results joined with classes
     cursor.execute("""
-        SELECT DISTINCT rr.class_id, rr.event_id, c.name
+        SELECT DISTINCT rr.class_id, rr.event_id, rr.championship_event_id, c.name
         FROM race_results rr
         JOIN classes c ON rr.class_id = c.id
     """)
@@ -59,17 +59,19 @@ def init_class_events():
     skipped_count = 0
     
     for row in rows:
-        class_id, event_id, class_name = row
+        class_id, event_id, champ_event_id, class_name = row
         discipline = get_discipline(class_name)
         
         if discipline:
             try:
                 cursor.execute("""
-                    INSERT INTO class_events (class_id, event_id, discipline)
-                    VALUES (?, ?, ?)
-                """, (class_id, event_id, discipline))
+                    INSERT INTO class_events (class_id, event_id, discipline, championship_event_id)
+                    VALUES (?, ?, ?, ?)
+                """, (class_id, event_id, discipline, champ_event_id))
                 inserted_count += 1
             except sqlite3.IntegrityError as e:
+                # Try update if exists but null? Or just skip strictly.
+                # Since we cleared table, it should be fine.
                 print(f"Skipping duplicate/error: {class_id}, {event_id}, {discipline} - {e}")
         else:
             print(f"Warning: Could not determine discipline for class '{class_name}' ({class_id})")
